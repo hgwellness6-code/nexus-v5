@@ -32,43 +32,31 @@ from backend.utils.analytics import (
 def analyze_shipment_data(parsed, doc_type):
     insights = []
 
-    # Default safe values
     fuel = float(parsed.get("fuel_surcharge") or 0)
     weight = float(parsed.get("billed_weight") or parsed.get("gross_weight") or 0)
     remote = float(parsed.get("remote_area_surcharge") or 0)
     total = float(parsed.get("total_charge") or parsed.get("declared_value") or 0)
 
-    # 🚚 Cost logic
     if fuel > 12:
         insights.append("⚠️ Fuel surcharge is higher than normal")
-
     if remote > 0:
         insights.append("⚠️ Remote area delivery increases cost")
-
     if weight > 100:
         insights.append("⚠️ Heavy shipment — consider splitting")
-
     if total > 500:
         insights.append("💰 High cost shipment")
-
-    # 📊 Smart combinations (THIS is real intelligence)
     if fuel > 10 and remote > 0:
         insights.append("🚨 Cost spike: Fuel + Remote area combined")
-
     if weight > 100 and total > 500:
         insights.append("📦 Inefficient shipment: high weight & high cost")
-
     if total > 0 and weight > 0:
         cost_per_kg = total / weight
         if cost_per_kg > 10:
             insights.append(f"📊 Cost per kg is high: {round(cost_per_kg, 2)}")
-
-    # 🌍 Pattern detection
     if parsed.get("destination_country") in ["USA", "UK", "Australia"]:
         insights.append("🌍 International priority zone shipment")
 
     return insights
-
 
 
 UPLOAD_DIR = os.path.join(os.path.dirname(__file__), '..', 'data', 'uploads')
@@ -152,7 +140,6 @@ def upload_file():
             parsed.get('confidence', 0)
         ))
 
-    # Log audit
     c.execute(
         'INSERT INTO audit_logs (action, entity_type, entity_id, details) VALUES (?, ?, ?, ?)',
         ('upload', 'document', doc_id, json.dumps({'filename': filename, 'doc_type': doc_type}))
@@ -163,7 +150,6 @@ def upload_file():
 
     match_result = match_shipments()
 
-    # Auto-detect currency from parsed document and persist it to settings
     detected_currency = parsed.get('currency') if parsed else None
     if detected_currency:
         current_settings = load_settings()
@@ -205,16 +191,11 @@ def delete_document(did):
         except Exception:
             pass
 
-        # Must delete in reverse-dependency order due to foreign key constraints:
-        # reminders -> shipments -> export_invoices/ups_invoices -> documents
-
-        # 1. Find invoice IDs linked to this document
         exp_ids = [r[0] for r in conn.execute(
             'SELECT id FROM export_invoices WHERE document_id = ?', (did,)).fetchall()]
         ups_ids = [r[0] for r in conn.execute(
             'SELECT id FROM ups_invoices WHERE document_id = ?', (did,)).fetchall()]
 
-        # 2. Find shipment IDs linked to those invoices
         shipment_ids = []
         if exp_ids:
             placeholders = ','.join('?' * len(exp_ids))
@@ -225,13 +206,11 @@ def delete_document(did):
             shipment_ids += [r[0] for r in conn.execute(
                 f'SELECT id FROM shipments WHERE ups_invoice_id IN ({placeholders})', ups_ids).fetchall()]
 
-        # 3. Delete reminders for those shipments
         if shipment_ids:
             placeholders = ','.join('?' * len(shipment_ids))
             conn.execute(f'DELETE FROM reminders WHERE shipment_id IN ({placeholders})', shipment_ids)
             conn.execute(f'DELETE FROM shipments WHERE id IN ({placeholders})', shipment_ids)
 
-        # 4. Delete the invoice rows
         if exp_ids:
             placeholders = ','.join('?' * len(exp_ids))
             conn.execute(f'DELETE FROM export_invoices WHERE id IN ({placeholders})', exp_ids)
@@ -239,7 +218,6 @@ def delete_document(did):
             placeholders = ','.join('?' * len(ups_ids))
             conn.execute(f'DELETE FROM ups_invoices WHERE id IN ({placeholders})', ups_ids)
 
-        # 5. Finally delete the document
         conn.execute('DELETE FROM documents WHERE id = ?', (did,))
         conn.commit()
     conn.close()
@@ -272,29 +250,7 @@ def add_shipment():
         "total": float(request.form.get("total")),
         "date": request.form.get("date")
     }
-
-    # 🧠 ADD THIS LINE
-    insights = analyze_shipment(shipment)
-
-    # 👉 RETURN insights to frontend
-    return jsonify({
-        "shipment": shipment,
-        "insights": insights
-    })@app.route('/add_shipment', methods=['POST'])
-def add_shipment():
-    shipment = {
-        "transport": request.form.get("transport"),
-        "weight": float(request.form.get("weight")),
-        "location": request.form.get("location"),
-        "fuel_surcharge": float(request.form.get("fuel")),
-        "total": float(request.form.get("total")),
-        "date": request.form.get("date")
-    }
-
-    # 🧠 
-    insights = analyze_shipment(shipment)
-
-    # 👉 RETURN insights to frontend
+    insights = analyze_shipment_data(shipment, None)
     return jsonify({
         "shipment": shipment,
         "insights": insights
@@ -342,7 +298,6 @@ def update_priority(sid):
 
 @app.route('/api/shipments/bulk', methods=['POST'])
 def bulk_action():
-    """Bulk action on shipments: delete, tag, change status."""
     data = request.json
     action = data.get('action')
     ids = data.get('ids', [])
@@ -559,11 +514,10 @@ def delete_saved_search(sid):
     return jsonify({"success": True})
 
 
-
 @app.route('/api/export/pdf')
 def export_pdf():
-    """Generate and download a full PDF intelligence report."""
     from backend.utils.pdf_report import generate_report
+    from datetime import datetime as _dt
 
     date_from = request.args.get('date_from')
     date_to   = request.args.get('date_to')
@@ -591,8 +545,6 @@ def export_pdf():
         title="Nexus Shipping Intelligence Report",
     )
 
-    from flask import Response
-    from datetime import datetime as _dt
     filename = f"nexus-report-{_dt.now().strftime('%Y%m%d-%H%M')}.pdf"
     return Response(
         pdf_bytes,
@@ -600,20 +552,11 @@ def export_pdf():
         headers={'Content-Disposition': f'attachment; filename="{filename}"'}
     )
 
-if __name__ == '__main__':
-    init_db()
-    print("\n" + "="*55)
-    print("  NEXUS Shipping Intelligence  v2.0")
-    print("  Running at http://localhost:5000")
-    print("="*55 + "\n")
-    app.run(host='0.0.0.0', port=5000, debug=False, use_reloader=False)
-
 
 # ── NEW v5 ROUTES ──────────────────────────────────────────────────────────────
 
 @app.route('/api/analytics/weight-distribution', methods=['GET'])
 def weight_distribution():
-    """Weight bucketed histogram data."""
     conn = get_conn()
     c = conn.cursor()
     buckets = [
@@ -633,7 +576,6 @@ def weight_distribution():
 
 @app.route('/api/analytics/service-mix', methods=['GET'])
 def service_mix():
-    """UPS service type mix."""
     conn = get_conn()
     rows = conn.execute('''
         SELECT COALESCE(ui.service_type, 'Unknown') as service,
@@ -649,7 +591,6 @@ def service_mix():
 
 @app.route('/api/analytics/timeline', methods=['GET'])
 def shipment_timeline():
-    """Weekly shipment counts for the past 52 weeks."""
     conn = get_conn()
     rows = conn.execute('''
         SELECT strftime('%Y-W%W', ship_date) as week,
@@ -665,7 +606,6 @@ def shipment_timeline():
 
 @app.route('/api/analytics/top-consignees', methods=['GET'])
 def top_consignees():
-    """Top consignees by shipment count and spend."""
     conn = get_conn()
     rows = conn.execute('''
         SELECT consignee,
@@ -693,7 +633,6 @@ def update_status(sid):
 
 @app.route('/api/analytics/compare', methods=['GET'])
 def compare_periods():
-    """Compare two date ranges side by side."""
     p1_from = request.args.get('p1_from', '')
     p1_to   = request.args.get('p1_to', '')
     p2_from = request.args.get('p2_from', '')
@@ -714,3 +653,12 @@ def compare_periods():
         'period1': period_stats(p1_from, p1_to),
         'period2': period_stats(p2_from, p2_to),
     })
+
+
+if __name__ == '__main__':
+    init_db()
+    print("\n" + "="*55)
+    print("  NEXUS Shipping Intelligence  v2.0")
+    print("  Running at http://0.0.0.0:5000")
+    print("="*55 + "\n")
+    app.run(host='0.0.0.0', port=5000, debug=False, use_reloader=False)
