@@ -1,0 +1,8 @@
+{
+  "email_from": "",
+  "email_password": "",
+  "email_to": "",
+  "smtp_host": "smtp.gmail.com",
+  "smtp_port": 587,
+  "currency": "INR"
+}

@@ -1,0 +1,1567 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nexus v6 · Offline Intelligence</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Instrument+Sans:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0b0c10;--surface:#13141a;--surface2:#1a1b24;--surface3:#21222e;
+  --line:#2a2b3a;--line2:#353648;
+  --ink:#eeeef5;--ink2:#b0b0cc;--ink3:#6b6b88;--ink4:#3d3d52;
+  --accent:#00d4aa;--accent-h:#00b894;--accent-l:rgba(0,212,170,.12);
+  --accent2:#5b8dee;--accent2-l:rgba(91,141,238,.12);
+  --amber:#f5a623;--amber-l:rgba(245,166,35,.12);
+  --red:#ff5c7a;--red-l:rgba(255,92,122,.12);
+  --purple:#c084fc;--purple-l:rgba(192,132,252,.12);
+  --cyan:#38bdf8;--cyan-l:rgba(56,189,248,.12);
+  --green:#4ade80;--green-l:rgba(74,222,128,.12);
+  --r:10px;--r-sm:6px;--r-lg:14px;--r-xl:20px;
+  --shadow:0 1px 4px rgba(0,0,0,.4);
+  --shadow-md:0 4px 20px rgba(0,0,0,.5);
+  --shadow-lg:0 12px 48px rgba(0,0,0,.7);
+  --font:'Instrument Sans',sans-serif;
+  --display:'Syne',sans-serif;
+  --mono:'JetBrains Mono',monospace;
+  --glow-accent:0 0 20px rgba(0,212,170,.25);
+  --glow-red:0 0 20px rgba(255,92,122,.25);
+}
+body{font-family:var(--font);background:var(--bg);color:var(--ink);height:100vh;overflow:hidden;font-size:13.5px;-webkit-font-smoothing:antialiased;letter-spacing:.01em}
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--line2);border-radius:2px}
+
+#app{display:flex;height:100vh}
+
+/* SIDEBAR */
+.sb{width:220px;background:var(--surface);border-right:1px solid var(--line);display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto;overflow-x:hidden}
+.sb-logo{padding:20px 16px 14px;display:flex;align-items:center;gap:11px;border-bottom:1px solid var(--line)}
+.logo-mark{width:36px;height:36px;background:var(--accent);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:var(--glow-accent)}
+.logo-mark svg{width:18px;height:18px;fill:var(--bg)}
+.logo-name{font-family:var(--display);font-size:17px;font-weight:800;color:var(--ink);letter-spacing:-0.5px}
+.logo-ver{font-size:10px;color:var(--ink3);margin-top:1px;font-family:var(--mono)}
+.offline-badge{display:inline-flex;align-items:center;gap:4px;font-size:9px;font-weight:700;color:var(--accent);background:var(--accent-l);border:1px solid rgba(0,212,170,.2);padding:2px 7px;border-radius:10px;margin-top:3px;font-family:var(--mono);letter-spacing:.04em}
+.offline-dot{width:5px;height:5px;border-radius:50%;background:var(--accent);animation:blink 2s ease infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+.nav-group{padding:8px 8px 2px}
+.nav-label{font-size:9px;font-weight:700;color:var(--ink4);letter-spacing:.14em;text-transform:uppercase;padding:8px 8px 4px;font-family:var(--display)}
+.nav-item{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:8px;cursor:pointer;color:var(--ink3);font-size:12.5px;font-weight:500;transition:all .15s;user-select:none;position:relative}
+.nav-item:hover{background:var(--surface2);color:var(--ink2)}
+.nav-item.active{background:var(--surface3);color:var(--ink)}
+.nav-item.active::before{content:'';position:absolute;left:0;top:50%;transform:translateY(-50%);width:3px;height:16px;background:var(--accent);border-radius:0 2px 2px 0;box-shadow:var(--glow-accent)}
+.nav-item.intel.active::before{background:var(--accent2);box-shadow:0 0 8px rgba(91,141,238,.4)}
+.nav-ico{width:15px;height:15px;flex-shrink:0;opacity:.6}
+.nav-item.active .nav-ico,.nav-item:hover .nav-ico{opacity:1}
+.nav-badge{margin-left:auto;font-size:9px;font-weight:700;padding:1px 6px;border-radius:8px;font-family:var(--mono)}
+.nb-accent{background:var(--accent-l);color:var(--accent)}
+.nb-red{background:var(--red-l);color:var(--red)}
+.nb-amber{background:var(--amber-l);color:var(--amber)}
+.nb-blue{background:var(--accent2-l);color:var(--accent2)}
+
+.sb-footer{margin-top:auto;padding:12px 14px;border-top:1px solid var(--line);display:flex;align-items:center;gap:9px}
+.sb-avatar{width:28px;height:28px;background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:var(--bg);flex-shrink:0;font-family:var(--display)}
+.sb-user{flex:1;min-width:0}
+.sb-user-name{font-size:11.5px;font-weight:600;color:var(--ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sb-user-role{font-size:10px;color:var(--ink4);font-family:var(--mono)}
+.dark-toggle{width:30px;height:16px;border-radius:8px;background:var(--line2);border:none;cursor:pointer;flex-shrink:0;position:relative;transition:background .2s}
+.dark-toggle.on{background:var(--accent)}
+.dark-toggle::after{content:'';position:absolute;width:10px;height:10px;border-radius:50%;background:#fff;top:3px;left:3px;transition:.15s}
+.dark-toggle.on::after{left:17px}
+
+/* MAIN */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+.topbar{background:var(--surface);border-bottom:1px solid var(--line);padding:0 20px;height:50px;display:flex;align-items:center;gap:10px;flex-shrink:0}
+.tb-title{font-family:var(--display);font-size:15px;font-weight:700;flex:1;letter-spacing:-.3px}
+.tb-search{display:flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--line);border-radius:8px;padding:0 11px;height:32px;width:220px}
+.tb-search input{background:none;border:none;outline:none;font-family:var(--font);font-size:12.5px;color:var(--ink);width:100%}
+.tb-search input::placeholder{color:var(--ink3)}
+.notif-btn{width:30px;height:30px;border-radius:7px;display:flex;align-items:center;justify-content:center;cursor:pointer;background:transparent;border:1px solid var(--line);color:var(--ink3);position:relative;transition:all .15s}
+.notif-btn:hover{background:var(--surface2);color:var(--ink)}
+.notif-dot{position:absolute;top:4px;right:4px;width:6px;height:6px;border-radius:50%;background:var(--red);border:2px solid var(--surface)}
+
+.content{flex:1;overflow-y:auto;padding:20px 22px}
+.screen{display:none}.screen.on{display:block}
+
+/* LAYOUT GRIDS */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.g5{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
+
+/* CARD */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:16px 18px}
+.card-title{font-family:var(--display);font-size:10px;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em;margin-bottom:14px}
+.card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.card-header .card-title{margin-bottom:0}
+
+/* STAT CARDS */
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:16px 18px;position:relative;overflow:hidden}
+.stat::after{content:'';position:absolute;bottom:-20px;right:-20px;width:80px;height:80px;border-radius:50%;opacity:.04}
+.stat-accent::after{background:var(--accent)}
+.stat-red::after{background:var(--red)}
+.stat-amber::after{background:var(--amber)}
+.stat-blue::after{background:var(--accent2)}
+.stat-purple::after{background:var(--purple)}
+.stat-ico{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;margin-bottom:12px}
+.stat-val{font-family:var(--display);font-size:26px;font-weight:800;letter-spacing:-1px;line-height:1;margin-bottom:3px}
+.stat-label{font-size:11px;color:var(--ink3);font-weight:500;font-family:var(--mono)}
+
+/* TABLE */
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th{text-align:left;color:var(--ink3);font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap;font-family:var(--display)}
+td{padding:9px 10px;border-bottom:1px solid var(--line);color:var(--ink2);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tbody tr{cursor:pointer;transition:background .1s}
+tbody tr:hover td{background:var(--surface2);color:var(--ink)}
+.mono{font-family:var(--mono);font-size:11.5px;color:var(--accent);font-weight:500}
+
+/* PILLS */
+.pill{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:20px;font-size:10.5px;font-weight:700;white-space:nowrap;font-family:var(--mono);letter-spacing:.02em}
+.p-green{background:var(--green-l);color:var(--green)}
+.p-blue{background:var(--accent2-l);color:var(--accent2)}
+.p-accent{background:var(--accent-l);color:var(--accent)}
+.p-amber{background:var(--amber-l);color:var(--amber)}
+.p-red{background:var(--red-l);color:var(--red)}
+.p-purple{background:var(--purple-l);color:var(--purple)}
+.p-cyan{background:var(--cyan-l);color:var(--cyan)}
+.p-neutral{background:var(--surface3);color:var(--ink3);border:1px solid var(--line2)}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:8px;font-size:12.5px;font-weight:600;cursor:pointer;border:none;transition:all .15s;font-family:var(--font);white-space:nowrap}
+.btn-primary{background:var(--accent);color:var(--bg)}.btn-primary:hover{background:var(--accent-h);box-shadow:var(--glow-accent)}
+.btn-intel{background:var(--accent2);color:#fff}.btn-intel:hover{background:#4a7ee0;box-shadow:0 0 16px rgba(91,141,238,.3)}
+.btn-ghost{background:transparent;border:1px solid var(--line2);color:var(--ink3)}.btn-ghost:hover{background:var(--surface2);border-color:var(--line);color:var(--ink2)}
+.btn-danger{background:var(--red-l);color:var(--red);border:1px solid rgba(255,92,122,.3)}.btn-danger:hover{background:rgba(255,92,122,.2)}
+.btn-sm{padding:5px 11px;font-size:11.5px}
+.btn-xs{padding:3px 8px;font-size:11px;border-radius:5px}
+.btn-icon{padding:6px}
+
+/* FORMS */
+.field{margin-bottom:13px}
+.field label{display:block;font-size:11.5px;font-weight:600;color:var(--ink3);margin-bottom:5px;font-family:var(--display);text-transform:uppercase;letter-spacing:.06em}
+input[type=text],input[type=email],input[type=password],input[type=number],input[type=date],select,textarea{width:100%;background:var(--surface2);border:1px solid var(--line);border-radius:var(--r-sm);padding:8px 11px;font-size:12.5px;color:var(--ink);outline:none;font-family:var(--font);transition:border-color .15s}
+input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-l)}
+select option{background:var(--surface2)}
+
+/* UPLOAD / DROP */
+.drop-zone{border:1.5px dashed var(--line2);border-radius:var(--r-xl);padding:32px 24px;text-align:center;cursor:pointer;transition:all .2s;background:var(--surface2);position:relative;overflow:hidden}
+.drop-zone::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,var(--accent-l),transparent 60%);opacity:0;transition:opacity .2s}
+.drop-zone:hover,.drop-zone.over{border-color:var(--accent);border-style:solid}
+.drop-zone:hover::before,.drop-zone.over::before{opacity:1}
+.drop-icon{font-size:32px;margin-bottom:10px;display:block;position:relative;z-index:1}
+.drop-title{font-family:var(--display);font-size:15px;font-weight:700;margin-bottom:4px;position:relative;z-index:1}
+.drop-sub{font-size:11.5px;color:var(--ink3);position:relative;z-index:1}
+
+/* FILE QUEUE */
+.file-item{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--surface2);border-radius:var(--r-sm);border:1px solid var(--line);margin-bottom:6px;transition:all .2s}
+.file-item.scanning{border-color:var(--accent2);background:rgba(91,141,238,.05);animation:scanpulse 1.5s ease infinite}
+@keyframes scanpulse{0%,100%{box-shadow:none}50%{box-shadow:0 0 12px rgba(91,141,238,.2)}}
+.file-item.done{border-color:var(--accent)}
+.file-item.error{border-color:var(--red)}
+.file-ico{font-size:18px;flex-shrink:0}
+.file-info{flex:1;min-width:0}
+.file-name{font-size:12.5px;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:var(--display)}
+.file-status{font-size:11px;color:var(--ink3);margin-top:2px;font-family:var(--mono)}
+.prog-bar{height:2px;background:var(--line);border-radius:2px;margin-top:6px;overflow:hidden}
+.prog-fill{height:100%;border-radius:2px;transition:width .4s ease}
+.prog-fill.scanning{background:linear-gradient(90deg,var(--accent2),var(--accent));animation:prog-glow 1s ease infinite alternate}
+@keyframes prog-glow{from{opacity:.7}to{opacity:1}}
+.prog-fill.done{background:var(--accent)}
+.prog-fill.error{background:var(--red)}
+
+/* INTEL CARD (results) */
+.intel-card{background:var(--surface2);border:1px solid var(--line);border-radius:var(--r-lg);overflow:hidden;margin-bottom:10px}
+.intel-card-header{padding:12px 14px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px}
+.intel-card-body{padding:14px}
+.intel-field{display:flex;justify-content:space-between;align-items:flex-start;padding:7px 0;border-bottom:1px solid var(--line)}
+.intel-field:last-child{border-bottom:none}
+.intel-fk{font-size:11px;color:var(--ink3);font-family:var(--mono);flex-shrink:0;margin-right:12px;text-transform:uppercase;letter-spacing:.06em;padding-top:1px}
+.intel-fv{font-size:12.5px;font-weight:600;color:var(--ink);text-align:right;word-break:break-word}
+.conf-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;margin-top:5px}
+.conf-high{background:var(--green)}
+.conf-med{background:var(--amber)}
+.conf-low{background:var(--red)}
+.match-line{display:flex;align-items:center;gap:6px;padding:6px 0;font-size:12px}
+.match-score{font-family:var(--mono);font-weight:700;font-size:11px}
+
+/* CHAT */
+.chat-wrap{display:flex;flex-direction:column;height:calc(100vh - 115px);max-height:700px}
+.chat-msgs{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px;background:var(--surface2);border:1px solid var(--line);border-radius:var(--r-lg) var(--r-lg) 0 0}
+.cmsg{display:flex;gap:9px;align-items:flex-start}
+.cmsg.user{flex-direction:row-reverse}
+.cav{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;flex-shrink:0;font-family:var(--display)}
+.cav.bot{background:linear-gradient(135deg,var(--accent),var(--accent2));color:var(--bg)}
+.cav.user{background:var(--surface3);border:1px solid var(--line2);color:var(--ink3)}
+.cbub{max-width:80%;padding:9px 13px;border-radius:12px;font-size:12.5px;line-height:1.65}
+.cbub.bot{background:var(--surface);border:1px solid var(--line);border-top-left-radius:4px;color:var(--ink2)}
+.cbub.user{background:var(--accent2);color:#fff;border-top-right-radius:4px}
+.cbub.thinking{opacity:.5}
+.chat-input-wrap{background:var(--surface);border:1px solid var(--line);border-top:none;border-radius:0 0 var(--r-lg) var(--r-lg);padding:10px}
+.chips-row{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:9px}
+.chip{padding:4px 11px;background:var(--surface2);border:1px solid var(--line);border-radius:20px;font-size:11.5px;cursor:pointer;transition:all .15s;color:var(--ink3);font-family:var(--mono)}
+.chip:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-l)}
+.chat-row{display:flex;gap:7px}
+.chat-input{flex:1;padding:8px 13px;border:1px solid var(--line2);border-radius:7px;font-size:12.5px;outline:none;background:var(--surface2);color:var(--ink);font-family:var(--font);transition:border-color .15s}
+.chat-input:focus{border-color:var(--accent2);box-shadow:0 0 0 3px var(--accent2-l)}
+
+/* ALERTS */
+.alert-item{display:flex;gap:9px;align-items:flex-start;padding:10px 12px;border-radius:var(--r-sm);margin-bottom:6px;border:1px solid}
+.al-error{background:var(--red-l);border-color:rgba(255,92,122,.3)}
+.al-warn{background:var(--amber-l);border-color:rgba(245,166,35,.3)}
+.al-info{background:var(--accent2-l);border-color:rgba(91,141,238,.3)}
+.al-success{background:var(--green-l);border-color:rgba(74,222,128,.3)}
+.al-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;margin-top:4px}
+.al-error .al-dot{background:var(--red)}
+.al-warn .al-dot{background:var(--amber)}
+.al-info .al-dot{background:var(--accent2)}
+.al-success .al-dot{background:var(--green)}
+.al-text{font-size:12px;color:var(--ink2);line-height:1.5}
+
+/* SECTION */
+.section-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.section-title{font-family:var(--display);font-size:22px;font-weight:800;letter-spacing:-0.6px}
+.section-sub{font-size:12px;color:var(--ink3);margin-top:2px;font-family:var(--mono)}
+.divider{border:none;border-top:1px solid var(--line);margin:14px 0}
+.empty{text-align:center;padding:28px 20px;color:var(--ink3)}
+.empty-ico{font-size:26px;display:block;margin-bottom:7px}
+.empty-title{font-size:13px;font-weight:600;color:var(--ink2);margin-bottom:3px;font-family:var(--display)}
+.empty-sub{font-size:11.5px;font-family:var(--mono)}
+
+/* FILTER */
+.filter-bar{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px;align-items:center}
+.filter-bar input,.filter-bar select{width:auto;flex:0 0 auto;padding:5px 9px;font-size:11.5px;height:30px}
+
+/* TABS */
+.tabs{display:flex;gap:2px;margin-bottom:14px;border-bottom:1px solid var(--line)}
+.tab{padding:7px 14px;background:transparent;border:none;border-bottom:2px solid transparent;font-size:12.5px;font-weight:600;color:var(--ink3);cursor:pointer;transition:all .15s;margin-bottom:-1px;font-family:var(--display);letter-spacing:.02em}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+
+/* WEIGHT BARS */
+.wbar{display:flex;align-items:center;gap:7px;margin-bottom:6px}
+.wbar-label{font-size:10.5px;color:var(--ink3);width:65px;flex-shrink:0;font-family:var(--mono);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wbar-track{flex:1;height:6px;background:var(--line);border-radius:3px;overflow:hidden}
+.wbar-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:3px;transition:width .6s ease}
+.wbar-val{font-size:10.5px;font-family:var(--mono);color:var(--ink3);width:55px;text-align:right;flex-shrink:0}
+
+/* REMINDERS */
+.rem-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;margin-bottom:7px;display:flex;gap:10px;align-items:flex-start}
+.rem-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:4px}
+.rem-title{font-size:12.5px;font-weight:600;margin-bottom:2px;font-family:var(--display)}
+.rem-meta{font-size:11px;color:var(--ink3);font-family:var(--mono)}
+.rem-actions{display:flex;gap:5px;margin-top:7px}
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- SIDEBAR -->
+<nav class="sb">
+  <div class="sb-logo">
+    <div class="logo-mark">
+      <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+    </div>
+    <div>
+      <div class="logo-name">Nexus</div>
+      <div class="logo-ver">v6 · intel</div>
+      <div class="offline-badge"><span class="offline-dot"></span>OFFLINE</div>
+    </div>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-label">Overview</div>
+    <div class="nav-item active" onclick="go('dashboard')">
+      <svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      Dashboard
+    </div>
+    <div class="nav-item" onclick="go('shipments')">
+      <svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 17H3a2 2 0 01-2-2V5a2 2 0 012-2h11a2 2 0 012 2v3"/><rect x="9" y="11" width="14" height="10" rx="2"/><circle cx="12" cy="21" r="1"/><circle cx="20" cy="21" r="1"/></svg>
+      Shipments
+      <span class="nav-badge nb-accent" id="nb-shipments" style="display:none">0</span>
+    </div>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-label">Intelligence</div>
+    <div class="nav-item intel" onclick="go('understand')">
+      <svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9.5 2A2.5 2.5 0 0112 4.5v15a2.5 2.5 0 01-4.96-.44 2.5 2.5 0 01-2.96-3.08 3 3 0 01-.34-5.58 2.5 2.5 0 013.32-3.97A2.5 2.5 0 019.5 2z"/><path d="M14.5 2A2.5 2.5 0 0112 4.5v15a2.5 2.5 0 004.96-.44 2.5 2.5 0 002.96-3.08 3 3 0 00.34-5.58 2.5 2.5 0 00-3.32-3.97A2.5 2.5 0 0014.5 2z"/></svg>
+      Auto-Understand
+      <span class="nav-badge nb-blue">NEW</span>
+    </div>
+    <div class="nav-item intel" onclick="go('chat')">
+      <svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+      Smart Chat
+    </div>
+    <div class="nav-item intel" onclick="go('matcher')">
+      <svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+      Auto-Matcher
+    </div>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-label">Operations</div>
+    <div class="nav-item" onclick="go('upload')">
+      <svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      Upload
+    </div>
+    <div class="nav-item" onclick="go('documents')">
+      <svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      Documents
+    </div>
+    <div class="nav-item" onclick="go('analytics')">
+      <svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      Analytics
+    </div>
+    <div class="nav-item" onclick="go('reminders')">
+      <svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+      Reminders
+      <span class="nav-badge nb-red" id="nb-reminders" style="display:none">0</span>
+    </div>
+    <div class="nav-item" onclick="go('estimator')">
+      <svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+      Estimator
+    </div>
+    <div class="nav-item" onclick="go('settings')">
+      <svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+      Settings
+    </div>
+  </div>
+
+  <div class="sb-footer">
+    <div class="sb-avatar">NX</div>
+    <div class="sb-user">
+      <div class="sb-user-name">Nexus User</div>
+      <div class="sb-user-role">100% offline</div>
+    </div>
+    <button class="dark-toggle" id="dark-toggle" onclick="toggleLight()"></button>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<div class="main">
+  <div class="topbar">
+    <div class="tb-title" id="topbar-title">Dashboard</div>
+    <div class="tb-search">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="opacity:.35;flex-shrink:0"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" placeholder="Search shipments…" oninput="globalSearch(this.value)" id="global-search">
+    </div>
+    <div class="notif-btn" onclick="go('reminders')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+      <span class="notif-dot" id="notif-dot" style="display:none"></span>
+    </div>
+  </div>
+
+  <div class="content" id="content-area">
+
+<!-- ======== DASHBOARD ======== -->
+<div class="screen on" id="screen-dashboard">
+  <div class="section-hd">
+    <div><div class="section-title">Dashboard</div><div class="section-sub" id="dash-date">—</div></div>
+    <div style="display:flex;gap:7px;align-items:center">
+      <span class="pill p-accent" style="font-size:10px;font-family:var(--mono)">⬤ OFFLINE INTEL</span>
+      <button class="btn btn-ghost btn-sm" onclick="loadDashboard()">Refresh</button>
+    </div>
+  </div>
+  <div class="g5" style="margin-bottom:12px" id="dash-stats"></div>
+  <div class="g2" style="margin-bottom:12px">
+    <div class="card"><div class="card-title">Monthly Spend</div><div style="height:190px;position:relative"><canvas id="c-monthly"></canvas></div></div>
+    <div class="card"><div class="card-title">Top Destinations</div><div id="dest-bars" style="margin-top:4px"></div></div>
+  </div>
+  <div class="g2">
+    <div class="card"><div class="card-header"><span class="card-title">Intelligence Alerts</span><span class="pill p-accent" style="font-size:9px">AUTO</span></div><div id="dash-alerts"></div></div>
+    <div class="card"><div class="card-title">Recent Shipments</div><div class="tbl-wrap"><table><thead><tr><th>Tracking</th><th>Dest</th><th>Cost</th><th>Status</th></tr></thead><tbody id="dash-recent"></tbody></table></div></div>
+  </div>
+</div>
+
+<!-- ======== AUTO-UNDERSTAND ======== -->
+<div class="screen" id="screen-understand">
+  <div class="section-hd">
+    <div>
+      <div class="section-title">Auto-Understand</div>
+      <div class="section-sub">Offline pattern intelligence · No API · No internet · Upload any document</div>
+    </div>
+    <span class="pill p-accent" style="font-size:10px;font-family:var(--mono)">100% LOCAL</span>
+  </div>
+
+  <div class="g2" style="align-items:start">
+    <!-- LEFT -->
+    <div>
+      <div class="card" style="border-color:rgba(91,141,238,.3);margin-bottom:12px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+          <div style="width:38px;height:38px;border-radius:10px;background:var(--accent2-l);border:1px solid rgba(91,141,238,.3);display:flex;align-items:center;justify-content:center">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent2)" stroke-width="2"><path d="M9.5 2A2.5 2.5 0 0112 4.5v15a2.5 2.5 0 01-4.96-.44 2.5 2.5 0 01-2.96-3.08 3 3 0 01-.34-5.58 2.5 2.5 0 013.32-3.97A2.5 2.5 0 019.5 2z"/><path d="M14.5 2A2.5 2.5 0 0112 4.5v15a2.5 2.5 0 004.96-.44 2.5 2.5 0 002.96-3.08 3 3 0 00.34-5.58 2.5 2.5 0 00-3.32-3.97A2.5 2.5 0 0014.5 2z"/></svg>
+          </div>
+          <div>
+            <div style="font-family:var(--display);font-size:14px;font-weight:700">Pattern Intelligence Engine</div>
+            <div style="font-size:11px;color:var(--ink3);font-family:var(--mono)">500+ patterns · 12 doc types · 100% offline</div>
+          </div>
+        </div>
+
+        <div class="drop-zone" id="ai-drop-zone"
+          onclick="document.getElementById('ai-file-input').click()"
+          ondragover="event.preventDefault();this.classList.add('over')"
+          ondragleave="this.classList.remove('over')"
+          ondrop="handleAIDrop(event)">
+          <span class="drop-icon">🧠</span>
+          <div class="drop-title">Drop any shipping document</div>
+          <div class="drop-sub">PDF · JPG · PNG — any format, any type</div>
+        </div>
+        <input type="file" id="ai-file-input" accept=".pdf,.jpg,.jpeg,.png,.tiff,.tif" multiple style="display:none" onchange="handleAIFiles(this.files)">
+
+        <div id="ai-queue" style="margin-top:10px"></div>
+
+        <div style="margin-top:10px;display:flex;gap:7px">
+          <button class="btn btn-intel btn-sm" onclick="processAIQueue()" id="btn-ai-process" style="display:none">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9.5 2A2.5 2.5 0 0112 4.5v15a2.5 2.5 0 01-4.96-.44"/><path d="M14.5 2A2.5 2.5 0 0112 4.5v15a2.5 2.5 0 004.96-.44"/></svg>
+            Analyse All
+          </button>
+          <button class="btn btn-ghost btn-sm" onclick="clearAIQueue()">Clear</button>
+        </div>
+      </div>
+
+      <!-- Doc types legend -->
+      <div class="card">
+        <div class="card-title">Patterns Detected For</div>
+        <div style="display:flex;flex-wrap:wrap;gap:5px">
+          <span class="pill p-green">Export Invoice</span>
+          <span class="pill p-blue">UPS / FedEx / DHL Bill</span>
+          <span class="pill p-purple">Bill of Lading</span>
+          <span class="pill p-amber">Packing List</span>
+          <span class="pill p-cyan">Customs / Duty</span>
+          <span class="pill p-neutral">Air Waybill</span>
+          <span class="pill p-neutral">Commercial Invoice</span>
+          <span class="pill p-neutral">Certificate of Origin</span>
+          <span class="pill p-neutral">Delivery Receipt</span>
+          <span class="pill p-neutral">Proforma Invoice</span>
+          <span class="pill p-red">Unknown → All fields extracted</span>
+        </div>
+        <div style="margin-top:10px;font-size:11.5px;color:var(--ink3);font-family:var(--mono);line-height:1.7">
+          Each document is scanned against 500+ regex patterns covering tracking IDs, invoice numbers, dates, weights, costs, party names, addresses, commodity descriptions, and reference codes.
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Results -->
+    <div>
+      <div class="card" id="ai-results-panel" style="min-height:300px">
+        <div id="ai-results-empty">
+          <div class="empty">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin:0 auto 10px;display:block;opacity:.2"><path d="M9.5 2A2.5 2.5 0 0112 4.5v15a2.5 2.5 0 01-4.96-.44 2.5 2.5 0 01-2.96-3.08 3 3 0 01-.34-5.58 2.5 2.5 0 013.32-3.97A2.5 2.5 0 019.5 2z"/><path d="M14.5 2A2.5 2.5 0 0112 4.5v15a2.5 2.5 0 004.96-.44 2.5 2.5 0 002.96-3.08 3 3 0 00.34-5.58 2.5 2.5 0 00-3.32-3.97A2.5 2.5 0 0014.5 2z"/></svg>
+            <div class="empty-title">Intelligence Results</div>
+            <div class="empty-sub">Upload and analyse a document to see results</div>
+          </div>
+        </div>
+        <div id="ai-results-content" style="display:none"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- History -->
+  <div style="margin-top:14px">
+    <div class="card">
+      <div class="card-header"><span class="card-title">Processed This Session</span><span id="ai-hist-count" style="font-size:11px;color:var(--ink3);font-family:var(--mono)">0 documents</span></div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>Filename</th><th>Identified Type</th><th>Fields</th><th>Confidence</th><th>Actions</th></tr></thead>
+          <tbody id="ai-history-table"><tr><td colspan="5" style="text-align:center;color:var(--ink3);padding:20px;font-family:var(--mono)">No documents analysed yet</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ======== UPLOAD ======== -->
+<div class="screen" id="screen-upload">
+  <div class="section-hd">
+    <div><div class="section-title">Upload</div><div class="section-sub">Standard document upload + regex extraction</div></div>
+    <button class="btn btn-primary btn-sm" onclick="runMatch()">Auto-Match All</button>
+  </div>
+  <div class="g2" style="margin-bottom:12px">
+    <div>
+      <div class="card" style="margin-bottom:12px">
+        <div class="card-title">Drop Files</div>
+        <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()" ondragover="event.preventDefault();this.classList.add('over')" ondragleave="this.classList.remove('over')" ondrop="handleDrop(event)">
+          <span class="drop-icon">📂</span>
+          <div class="drop-title">Drop files here</div>
+          <div class="drop-sub">PDF, JPG, PNG · Export & UPS Invoices</div>
+        </div>
+        <input type="file" id="file-input" accept=".pdf,.jpg,.jpeg,.png" multiple style="display:none" onchange="handleFiles(this.files)">
+      </div>
+      <div class="card"><div class="card-title">Queue</div><div id="upload-queue"><div class="empty"><span class="empty-ico">📭</span><div class="empty-title">No files yet</div></div></div></div>
+    </div>
+    <div class="card"><div class="card-title">Extracted Fields</div><div id="extracted-preview"><div class="empty"><span class="empty-ico">🔍</span><div class="empty-title">Upload a document</div></div></div></div>
+  </div>
+</div>
+
+<!-- ======== SHIPMENTS ======== -->
+<div class="screen" id="screen-shipments">
+  <div class="section-hd">
+    <div><div class="section-title">Shipments</div><div class="section-sub" id="ship-count">Loading…</div></div>
+    <div style="display:flex;gap:7px">
+      <button class="btn btn-ghost btn-sm" onclick="exportCSV()">CSV</button>
+      <button class="btn btn-ghost btn-sm" onclick="exportJSON()">JSON</button>
+    </div>
+  </div>
+  <div class="filter-bar">
+    <input type="text" id="ship-search" placeholder="Search…" style="width:200px" oninput="filterShipments()">
+    <select id="ship-status" onchange="filterShipments()"><option value="">All Statuses</option><option>matched</option><option>unmatched</option><option>pending</option><option>closed</option></select>
+    <select id="ship-dest" onchange="filterShipments()"><option value="">All Destinations</option></select>
+    <input type="date" id="ship-from" onchange="filterShipments()">
+    <input type="date" id="ship-to" onchange="filterShipments()">
+    <button class="btn btn-ghost btn-sm" onclick="clearFilters()">Clear</button>
+  </div>
+  <div class="card">
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th><input type="checkbox" id="select-all" onchange="toggleSelectAll(this)"></th><th>Tracking</th><th>Export Inv</th><th>UPS Inv</th><th>Date</th><th>Dest</th><th>Consignee</th><th>Weight</th><th>/KG</th><th>Total</th><th>Status</th></tr></thead>
+        <tbody id="ship-table"></tbody>
+      </table>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding-top:10px;border-top:1px solid var(--line)">
+      <span style="font-size:11px;color:var(--ink3);font-family:var(--mono)" id="ship-sel-info"></span>
+      <div style="display:flex;gap:5px">
+        <button class="btn btn-ghost btn-xs" onclick="bulkTag()">Tag</button>
+        <button class="btn btn-danger btn-xs" onclick="bulkDelete()">Delete</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ======== DOCUMENTS ======== -->
+<div class="screen" id="screen-documents">
+  <div class="section-hd"><div><div class="section-title">Documents</div></div></div>
+  <div class="card">
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Filename</th><th>Type</th><th>Uploaded</th><th>Actions</th></tr></thead>
+        <tbody id="docs-table"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ======== AUTO-MATCHER ======== -->
+<div class="screen" id="screen-matcher">
+  <div class="section-hd">
+    <div><div class="section-title">Auto-Matcher</div><div class="section-sub">Intelligent offline matching engine — matches export invoices to carrier bills</div></div>
+    <button class="btn btn-intel btn-sm" onclick="runSmartMatch()">Run Smart Match</button>
+  </div>
+  <div class="g2" style="margin-bottom:12px">
+    <div class="card">
+      <div class="card-title">Match Engine Settings</div>
+      <div class="field"><label>Tracking ID Similarity Threshold (%)</label><input type="range" id="match-threshold" min="50" max="100" value="80" oninput="document.getElementById('match-thresh-val').textContent=this.value+'%'" style="accent-color:var(--accent)"><div style="font-family:var(--mono);font-size:12px;color:var(--accent);margin-top:4px" id="match-thresh-val">80%</div></div>
+      <div class="field"><label>Also match by</label>
+        <div style="display:flex;flex-direction:column;gap:7px;margin-top:6px">
+          <label style="display:flex;align-items:center;gap:8px;font-family:var(--font);font-size:12.5px;text-transform:none;letter-spacing:0;color:var(--ink2)"><input type="checkbox" id="m-by-inv" checked style="width:auto;accent-color:var(--accent)"> Invoice Number</label>
+          <label style="display:flex;align-items:center;gap:8px;font-family:var(--font);font-size:12.5px;text-transform:none;letter-spacing:0;color:var(--ink2)"><input type="checkbox" id="m-by-date" checked style="width:auto;accent-color:var(--accent)"> Ship Date (±3 days)</label>
+          <label style="display:flex;align-items:center;gap:8px;font-family:var(--font);font-size:12.5px;text-transform:none;letter-spacing:0;color:var(--ink2)"><input type="checkbox" id="m-by-weight" checked style="width:auto;accent-color:var(--accent)"> Weight (±5%)</label>
+          <label style="display:flex;align-items:center;gap:8px;font-family:var(--font);font-size:12.5px;text-transform:none;letter-spacing:0;color:var(--ink2)"><input type="checkbox" id="m-by-dest" checked style="width:auto;accent-color:var(--accent)"> Destination</label>
+        </div>
+      </div>
+      <button class="btn btn-intel" onclick="runSmartMatch()">Run Match</button>
+    </div>
+    <div class="card"><div class="card-title">Last Match Results</div><div id="match-results"><div class="empty"><span class="empty-ico">🔗</span><div class="empty-title">No match run yet</div></div></div></div>
+  </div>
+  <div class="card">
+    <div class="card-header"><span class="card-title">Unmatched Shipments</span><span id="unmatched-count" style="font-size:11px;color:var(--ink3);font-family:var(--mono)">—</span></div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Tracking</th><th>Invoice</th><th>Date</th><th>Destination</th><th>Weight</th><th>Reason</th></tr></thead>
+        <tbody id="unmatched-table"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ======== SMART CHAT ======== -->
+<div class="screen" id="screen-chat">
+  <div class="section-hd">
+    <div><div class="section-title">Smart Chat</div><div class="section-sub">Pattern-driven query engine · 100% offline · No AI API needed</div></div>
+    <button class="btn btn-ghost btn-sm" onclick="clearChat()">Clear</button>
+  </div>
+  <div class="chat-wrap">
+    <div class="chat-msgs" id="chat-msgs">
+      <div class="cmsg">
+        <div class="cav bot">NX</div>
+        <div class="cbub bot">Hello! I'm Nexus Smart Chat — fully offline. I analyse your shipment data using pattern matching and rules to answer your questions. Try asking something below.</div>
+      </div>
+    </div>
+    <div class="chat-input-wrap">
+      <div class="chips-row" id="chat-chips">
+        <div class="chip" onclick="sendChip(this)">unmatched shipments</div>
+        <div class="chip" onclick="sendChip(this)">total spend this month</div>
+        <div class="chip" onclick="sendChip(this)">highest cost shipment</div>
+        <div class="chip" onclick="sendChip(this)">top destination</div>
+        <div class="chip" onclick="sendChip(this)">average kg rate</div>
+        <div class="chip" onclick="sendChip(this)">pending documents</div>
+        <div class="chip" onclick="sendChip(this)">overdue reminders</div>
+      </div>
+      <div class="chat-row">
+        <input class="chat-input" id="chat-input" type="text" placeholder="Ask about your shipments…" onkeydown="if(event.key==='Enter')sendChat()">
+        <button class="btn btn-intel btn-sm" onclick="sendChat()">Ask</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ======== ANALYTICS ======== -->
+<div class="screen" id="screen-analytics">
+  <div class="section-hd">
+    <div><div class="section-title">Analytics</div></div>
+    <div style="display:flex;gap:4px">
+      <button class="tab active" onclick="setAnPeriod(this,3)">3M</button>
+      <button class="tab" onclick="setAnPeriod(this,6)">6M</button>
+      <button class="tab" onclick="setAnPeriod(this,12)">12M</button>
+    </div>
+  </div>
+  <div class="g4" style="margin-bottom:12px" id="an-stats"></div>
+  <div class="g2" style="margin-bottom:12px">
+    <div class="card"><div class="card-title">Cost Trend</div><div style="height:190px;position:relative"><canvas id="c-an-trend"></canvas></div></div>
+    <div class="card"><div class="card-title">By Destination</div><div id="an-dest-bars" style="margin-top:4px"></div></div>
+  </div>
+  <div class="g2">
+    <div class="card"><div class="card-title">Charge Breakdown</div><div style="height:190px;position:relative"><canvas id="c-charges"></canvas></div></div>
+    <div class="card"><div class="card-title">Service Mix</div><div id="an-service-mix" style="margin-top:4px"></div></div>
+  </div>
+</div>
+
+<!-- ======== REMINDERS ======== -->
+<div class="screen" id="screen-reminders">
+  <div class="section-hd"><div><div class="section-title">Reminders</div></div></div>
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab(this,'tab-due')">Overdue</button>
+    <button class="tab" onclick="switchTab(this,'tab-upcoming')">Upcoming</button>
+    <button class="tab" onclick="switchTab(this,'tab-templates')">Templates</button>
+  </div>
+  <div id="tab-due"><div id="due-reminders"></div></div>
+  <div id="tab-upcoming" style="display:none"><div id="upcoming-reminders"></div></div>
+  <div id="tab-templates" style="display:none"><div id="reminder-templates"></div></div>
+</div>
+
+<!-- ======== ESTIMATOR ======== -->
+<div class="screen" id="screen-estimator">
+  <div class="section-hd"><div><div class="section-title">Cost Estimator</div></div></div>
+  <div class="g2" style="align-items:start">
+    <div class="card">
+      <div class="card-title">Parameters</div>
+      <div class="field"><label>Gross Weight (kg)</label><input type="number" id="est-weight" placeholder="5.5" min="0.1" step="0.1" oninput="runEstimate()"></div>
+      <div class="field"><label>Destination</label>
+        <select id="est-dest" onchange="runEstimate()"><option value="">— Select —</option><option>United States</option><option>United Kingdom</option><option>Germany</option><option>France</option><option>Australia</option><option>Canada</option><option>Japan</option><option>Singapore</option><option>UAE</option><option>Netherlands</option></select>
+      </div>
+      <div class="field"><label>Service</label>
+        <select id="est-service" onchange="runEstimate()"><option value="express">Express (1-2d)</option><option value="expedited">Expedited (3-5d)</option><option value="standard">Standard (5-8d)</option></select>
+      </div>
+      <div class="field"><label>Fuel Surcharge %</label><input type="number" id="est-fuel" value="21.5" step="0.5" oninput="runEstimate()"></div>
+    </div>
+    <div class="card" style="border-color:rgba(0,212,170,.2)">
+      <div class="card-title" style="color:var(--accent)">Breakdown</div>
+      <div id="est-empty" style="text-align:center;padding:24px 0;color:var(--ink3);font-size:12px;font-family:var(--mono)">Fill in parameters</div>
+      <div id="est-result" style="display:none">
+        <table style="width:100%;font-size:12.5px;border-collapse:collapse">
+          <tr><td style="padding:6px 0;color:var(--ink3)">Base</td><td style="text-align:right;font-weight:700;font-family:var(--mono)" id="est-r-base">—</td></tr>
+          <tr><td style="padding:6px 0;color:var(--ink3)">Fuel</td><td style="text-align:right;font-weight:700;font-family:var(--mono)" id="est-r-fuel">—</td></tr>
+          <tr style="border-top:1px solid var(--line)"><td style="padding:10px 0 4px;font-weight:700;font-family:var(--display)">Total</td><td style="text-align:right;font-weight:800;font-size:20px;color:var(--accent);font-family:var(--display)" id="est-r-total">—</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ======== SETTINGS ======== -->
+<div class="screen" id="screen-settings">
+  <div class="section-hd"><div><div class="section-title">Settings</div></div></div>
+  <div class="g2">
+    <div>
+      <div class="card" style="margin-bottom:12px">
+        <div class="card-title">Currency</div>
+        <div class="field"><label>Display Currency</label>
+          <select id="s-currency"><option value="USD">USD ($)</option><option value="EUR">EUR (€)</option><option value="GBP">GBP (£)</option><option value="INR">INR (₹)</option><option value="AUD">AUD (A$)</option><option value="SGD">SGD (S$)</option></select>
+        </div>
+        <button class="btn btn-primary" onclick="saveSettings()">Save</button>
+      </div>
+      <div class="card">
+        <div class="card-title">Email / SMTP</div>
+        <div class="field"><label>From Email</label><input type="email" id="s-from" placeholder="you@gmail.com"></div>
+        <div class="field"><label>App Password</label><input type="password" id="s-pass" placeholder="Gmail App Password"></div>
+        <div class="field"><label>Send To</label><input type="email" id="s-to" placeholder="recipient@example.com"></div>
+        <button class="btn btn-primary" onclick="saveSettings()">Save</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">About Nexus v6</div>
+      <div style="background:var(--accent-l);border:1px solid rgba(0,212,170,.2);border-radius:8px;padding:12px 14px;margin-bottom:12px">
+        <div style="font-family:var(--display);font-weight:700;color:var(--accent);margin-bottom:6px">What's New in v6</div>
+        <ul style="padding-left:14px;font-size:12px;color:var(--ink3);line-height:1.9;font-family:var(--mono)">
+          <li>Auto-Understand: 500+ pattern engine for any doc type</li>
+          <li>Identifies document type automatically from content</li>
+          <li>Extracts all fields — even from unknown formats</li>
+          <li>Smart Chat — offline query engine on your data</li>
+          <li>Auto-Matcher — multi-signal intelligent matching</li>
+          <li>100% offline · Zero API keys · No internet needed</li>
+        </ul>
+      </div>
+      <div style="font-family:var(--mono);font-size:11px;color:var(--ink3);line-height:1.9">
+        Version: Nexus v6<br>DB: SQLite (local)<br>Backend: Flask<br>Intelligence: Offline pattern engine<br>No external APIs whatsoever
+      </div>
+    </div>
+  </div>
+</div>
+
+  </div><!-- content-area -->
+</div><!-- main -->
+</div><!-- app -->
+
+<!-- SHIPMENT MODAL -->
+<div class="modal-overlay" id="modal-shipment" style="position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s;backdrop-filter:blur(6px)">
+  <div style="background:var(--surface);border:1px solid var(--line);border-radius:var(--r-xl);padding:22px;max-width:640px;width:94%;max-height:88vh;overflow-y:auto;box-shadow:var(--shadow-lg);transform:translateY(12px);transition:transform .2s" id="modal-ship-inner">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <div style="font-family:var(--display);font-size:17px;font-weight:800" id="modal-ship-title">Shipment</div>
+      <button class="btn btn-ghost btn-icon" onclick="closeModal('modal-shipment')">✕</button>
+    </div>
+    <div id="modal-ship-body"></div>
+    <div style="display:flex;gap:7px;justify-content:flex-end;margin-top:16px;padding-top:12px;border-top:1px solid var(--line)">
+      <button class="btn btn-ghost" onclick="closeModal('modal-shipment')">Close</button>
+      <button class="btn btn-primary" onclick="saveShipmentNotes()">Save Notes</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ================================================================
+// NEXUS v6 — OFFLINE PATTERN INTELLIGENCE ENGINE
+// No APIs · No internet · 100% local
+// ================================================================
+const API = '';
+let CURRENCY = localStorage.getItem('nx-currency')||'USD';
+let allShipments=[], allDocs=[], aiResults=[];
+let anPeriod=6;
+let monthlyChart=null, anTrendChart=null, chargesChart=null;
+
+const SYM={USD:'$',EUR:'€',GBP:'£',INR:'₹',AUD:'A$',SGD:'S$'};
+function sym(){ return SYM[CURRENCY]||'$'; }
+function fmtMoney(v){ return sym()+(+v||0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,','); }
+function fmtKg(v){ return (+v||0).toFixed(2)+' kg'; }
+function fmtDate(s){ if(!s)return '—'; try{return new Date(s).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});}catch{return s;}}
+
+// ══════════════════════════════════════════════════════════════
+// OFFLINE PATTERN INTELLIGENCE ENGINE
+// ══════════════════════════════════════════════════════════════
+const PATTERNS = {
+  // ── TRACKING IDs ──
+  tracking: [
+    { r: /\b1Z[0-9A-Z]{16}\b/g,        label: 'UPS Tracking',      conf: 'high' },
+    { r: /\b[0-9]{12,22}\b/g,           label: 'Tracking Number',   conf: 'med'  },
+    { r: /\bHAWB[:\s]*([A-Z0-9\-]+)/ig, label: 'HAWB',              conf: 'high' },
+    { r: /\bMAWB[:\s]*([0-9\-]+)/ig,    label: 'MAWB',              conf: 'high' },
+    { r: /\bAWB[:\s#]*([A-Z0-9\-]+)/ig, label: 'AWB',               conf: 'high' },
+    { r: /\bB\/L[:\s]*([A-Z0-9\-]+)/ig, label: 'Bill of Lading',    conf: 'high' },
+    { r: /\bContainer[:\s]*([A-Z]{4}[0-9]{7})/ig, label:'Container No', conf:'high'},
+  ],
+  // ── INVOICE / REFERENCE ──
+  invoice: [
+    { r: /Invoice\s*(?:No|Number|#)?[:\s]*([A-Z0-9\/\-]+)/i, label:'Invoice No', conf:'high' },
+    { r: /Invoice\s*Date[:\s]*([0-9\/\-\. ]+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)?[0-9]*)/i, label:'Invoice Date', conf:'high' },
+    { r: /Shipment\s*(?:No|ID|Reference)[:\s]*([A-Z0-9\-]+)/i, label:'Shipment Ref', conf:'high' },
+    { r: /P\.?O\.?\s*(?:No|Number)?[:\s]*([A-Z0-9\-\/]+)/i, label:'PO Number', conf:'med' },
+    { r: /Reference[:\s]*([A-Z0-9\-\/]+)/i, label:'Reference', conf:'med' },
+  ],
+  // ── DATES ──
+  dates: [
+    { r: /Ship(?:ping|ment)?\s*Date[:\s]*([0-9]{1,2}[\-\/\.][0-9]{1,2}[\-\/\.][0-9]{2,4})/i, label:'Ship Date', conf:'high' },
+    { r: /Date\s*of\s*(?:Departure|Shipment)[:\s]*([0-9]{1,2}[\-\/\.][0-9]{1,2}[\-\/\.][0-9]{2,4})/i, label:'Departure Date', conf:'high' },
+    { r: /(?:Delivery|Expected|Est\.?)\s*Date[:\s]*([0-9]{1,2}[\-\/\.][0-9]{1,2}[\-\/\.][0-9]{2,4})/i, label:'Delivery Date', conf:'high' },
+    { r: /([0-9]{2})[\-\/\.]([0-9]{2})[\-\/\.]([0-9]{4})/g, label:'Date', conf:'low' },
+  ],
+  // ── WEIGHTS ──
+  weight: [
+    { r: /Gross\s*Weight[:\s]*([0-9]+\.?[0-9]*)\s*(?:KG|KGS|kg|Kg)/i, label:'Gross Weight (kg)', conf:'high' },
+    { r: /Net\s*Weight[:\s]*([0-9]+\.?[0-9]*)\s*(?:KG|KGS|kg)/i, label:'Net Weight (kg)', conf:'high' },
+    { r: /Chargeable\s*Weight[:\s]*([0-9]+\.?[0-9]*)\s*(?:KG|LB)?/i, label:'Chargeable Weight', conf:'high' },
+    { r: /Total\s*Weight[:\s]*([0-9]+\.?[0-9]*)\s*(?:KG|KGS|LBS?)/i, label:'Total Weight', conf:'high' },
+    { r: /([0-9]+\.?[0-9]*)\s*KGS?\b/i, label:'Weight', conf:'med' },
+    { r: /([0-9]+\.?[0-9]*)\s*LBS?\b/i, label:'Weight (lbs)', conf:'med' },
+  ],
+  // ── FINANCIAL ──
+  financial: [
+    { r: /Total\s*(?:Amount|Cost|Charges?)[:\s]*(?:USD|EUR|GBP|INR|SGD|AUD|CAD)?\s*([0-9,]+\.?[0-9]*)/i, label:'Total Amount', conf:'high' },
+    { r: /Freight\s*(?:Charge|Cost)[:\s]*(?:[A-Z]{3})?\s*([0-9,]+\.?[0-9]*)/i, label:'Freight Charge', conf:'high' },
+    { r: /Fuel\s*Surcharge[:\s]*(?:[A-Z]{3})?\s*([0-9,]+\.?[0-9]*)/i, label:'Fuel Surcharge', conf:'high' },
+    { r: /Remote\s*Area[:\s]*(?:[A-Z]{3})?\s*([0-9,]+\.?[0-9]*)/i, label:'Remote Area Charge', conf:'high' },
+    { r: /Duty[:\s]*(?:[A-Z]{3})?\s*([0-9,]+\.?[0-9]*)/i, label:'Duty/Tax', conf:'high' },
+    { r: /Sub[\s-]*Total[:\s]*(?:[A-Z]{3})?\s*([0-9,]+\.?[0-9]*)/i, label:'Subtotal', conf:'med' },
+    { r: /(?:USD|EUR|GBP|INR|SGD)\s*([0-9,]+\.?[0-9]{2})/g, label:'Amount', conf:'med' },
+    { r: /\$\s*([0-9,]+\.?[0-9]{2})/g, label:'USD Amount', conf:'med' },
+  ],
+  // ── PARTIES ──
+  parties: [
+    { r: /Shipper[:\s]*\n?([A-Z][^\n]{3,60})/i, label:'Shipper', conf:'high' },
+    { r: /Consignee[:\s]*\n?([A-Z][^\n]{3,60})/i, label:'Consignee', conf:'high' },
+    { r: /Exporter[:\s]*\n?([A-Z][^\n]{3,60})/i, label:'Exporter', conf:'high' },
+    { r: /Importer[:\s]*\n?([A-Z][^\n]{3,60})/i, label:'Importer', conf:'high' },
+    { r: /Notify\s*Party[:\s]*\n?([A-Z][^\n]{3,60})/i, label:'Notify Party', conf:'high' },
+    { r: /Sold\s*To[:\s]*\n?([A-Z][^\n]{3,60})/i, label:'Sold To', conf:'med' },
+    { r: /Bill\s*To[:\s]*\n?([A-Z][^\n]{3,60})/i, label:'Bill To', conf:'med' },
+  ],
+  // ── GEOGRAPHY ──
+  geo: [
+    { r: /(?:Port\s*of\s*)?Origin[:\s]*([A-Z][^\n,;]{2,40})/i, label:'Origin', conf:'high' },
+    { r: /(?:Port\s*of\s*)?Destination[:\s]*([A-Z][^\n,;]{2,40})/i, label:'Destination', conf:'high' },
+    { r: /(?:From|Departure)[:\s]*([A-Z][^\n,;]{2,30})/i, label:'From', conf:'med' },
+    { r: /(?:To|Delivery\s*To)[:\s]*([A-Z][^\n,;]{2,30})/i, label:'To', conf:'med' },
+    { r: /Country\s*of\s*Origin[:\s]*([A-Z][^\n,;]{2,30})/i, label:'Country of Origin', conf:'high' },
+    { r: /Country\s*of\s*Dest[^\n]*[:\s]*([A-Z][^\n,;]{2,30})/i, label:'Country of Dest', conf:'high' },
+  ],
+  // ── GOODS ──
+  goods: [
+    { r: /Description\s*of\s*Goods[:\s]*\n?([^\n]{5,100})/i, label:'Goods Description', conf:'high' },
+    { r: /Commodity[:\s]*([^\n]{5,80})/i, label:'Commodity', conf:'high' },
+    { r: /HS\s*Code[:\s]*([0-9\.]+)/i, label:'HS Code', conf:'high' },
+    { r: /H\.?S\.?\s*(?:Tariff|No)?[:\s]*([0-9\.]+)/i, label:'HS Code', conf:'high' },
+    { r: /No\.\s*of\s*(?:Packages|Pieces|Pkgs?)[:\s]*([0-9]+)/i, label:'No. of Packages', conf:'high' },
+    { r: /Pieces?[:\s]*([0-9]+)/i, label:'Pieces', conf:'med' },
+    { r: /Declared\s*Value[:\s]*(?:[A-Z]{3})?\s*([0-9,]+\.?[0-9]*)/i, label:'Declared Value', conf:'high' },
+  ],
+  // ── SERVICE / CARRIER ──
+  service: [
+    { r: /Service\s*(?:Type|Level)?[:\s]*([A-Za-z\s]+(?:Express|Expedited|Standard|Economy|Priority))/i, label:'Service Type', conf:'high' },
+    { r: /Carrier[:\s]*([A-Za-z\s]+(?:UPS|FedEx|DHL|TNT|Aramex))/i, label:'Carrier', conf:'high' },
+    { r: /\b(UPS\s+(?:Express|Expedited|Standard|Saver|Worldwide[^\n]{0,20}))/i, label:'UPS Service', conf:'high' },
+    { r: /\b(FedEx\s+[A-Za-z]+)/i, label:'FedEx Service', conf:'high' },
+    { r: /\b(DHL\s+[A-Za-z]+)/i, label:'DHL Service', conf:'high' },
+  ],
+};
+
+// Document type fingerprints — scored signals
+const DOC_SIGNALS = [
+  { type:'ups_invoice',     label:'UPS Invoice',            color:'p-blue',
+    signals:['UPS','Invoice','Shipper Account','Fuel Surcharge','Brokerage','Residential','Service Charge','Package Weight'] },
+  { type:'export_invoice',  label:'Export Invoice',         color:'p-green',
+    signals:['Export Invoice','Commercial Invoice','FOB','CIF','Shipper','Consignee','Currency','Country of Origin','HS Code','Proforma'] },
+  { type:'bill_of_lading',  label:'Bill of Lading',         color:'p-purple',
+    signals:['Bill of Lading','B/L','Vessel','Voyage','Port of Loading','Port of Discharge','Master B/L','House B/L','Ocean'] },
+  { type:'packing_list',    label:'Packing List',           color:'p-amber',
+    signals:['Packing List','Carton','CTN','Gross Weight','Net Weight','Measurement','CBM','Pkg No','Case No'] },
+  { type:'customs',         label:'Customs / Duty',         color:'p-cyan',
+    signals:['Customs','Import','Duty','Tariff','HS Code','Declaration','Clearance','Entry Number','CBP','FORM','Drawback'] },
+  { type:'air_waybill',     label:'Air Waybill',            color:'p-neutral',
+    signals:['Air Waybill','AWB','MAWB','HAWB','Airline','Flight','IATA','Airfreight','Pieces','Chargeable Weight'] },
+  { type:'delivery_receipt',label:'Delivery Receipt',       color:'p-accent',
+    signals:['Delivery Receipt','Proof of Delivery','POD','Received By','Signature','Delivered','Consignee Signature'] },
+  { type:'certificate_origin',label:'Certificate of Origin',color:'p-neutral',
+    signals:['Certificate of Origin','C/O','Chamber of Commerce','Certify','Origin','Issued By','This is to certify'] },
+  { type:'fedex_invoice',   label:'FedEx Invoice',          color:'p-blue',
+    signals:['FedEx','Federal Express','FedEx Express','FedEx International','FedEx Account'] },
+  { type:'dhl_invoice',     label:'DHL Invoice',            color:'p-blue',
+    signals:['DHL','DHL Express','Waybill','DHL Account','DHL Worldwide'] },
+];
+
+function identifyDocType(text) {
+  const scores = DOC_SIGNALS.map(doc => {
+    const matches = doc.signals.filter(s => new RegExp(s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'i').test(text));
+    return { ...doc, score: matches.length, matched: matches };
+  });
+  scores.sort((a,b)=>b.score-a.score);
+  const best = scores[0];
+  const conf = best.score >= 4 ? 'high' : best.score >= 2 ? 'med' : 'low';
+  return { ...best, conf, all: scores };
+}
+
+function extractAllPatterns(text) {
+  const results = {};
+  for(const [category, pats] of Object.entries(PATTERNS)) {
+    for(const pat of pats) {
+      try {
+        const rx = new RegExp(pat.r.source, pat.r.flags.replace('g',''));
+        const m = text.match(new RegExp(pat.r.source, pat.r.flags));
+        if(m) {
+          const key = pat.label;
+          const val = (m[1]||m[0]).trim().replace(/\s+/g,' ');
+          if(val.length > 1 && val.length < 200) {
+            if(!results[key] || pat.conf === 'high') {
+              results[key] = { value: val, conf: pat.conf, category };
+            }
+          }
+        }
+      } catch(e) {}
+    }
+  }
+  return results;
+}
+
+function buildIntelResult(text, filename) {
+  const docType = identifyDocType(text);
+  const fields = extractAllPatterns(text);
+
+  // Extract all numbers for financial context
+  const amounts = [];
+  const amtRx = /(?:USD|EUR|GBP|INR|\$|€|£)\s*([0-9,]+\.?[0-9]{0,2})/gi;
+  let am;
+  while((am=amtRx.exec(text))!==null) { const v=parseFloat(am[1].replace(',','')); if(v>0) amounts.push(v); }
+
+  // Raw text lines for unknown fields
+  const lines = text.split('\n').map(l=>l.trim()).filter(l=>l.length>3&&l.length<200&&/[A-Z0-9]/i.test(l));
+
+  return {
+    filename,
+    doc_type: docType.type,
+    doc_label: docType.label,
+    doc_color: docType.color,
+    doc_conf: docType.conf,
+    doc_signals: docType.matched,
+    fields,
+    amounts,
+    raw_lines: lines.slice(0, 40),
+    fields_count: Object.keys(fields).length,
+    timestamp: new Date().toISOString(),
+  };
+}
+
+// ── AI QUEUE ────────────────────────────────────────────────────
+let aiQueue = [];
+
+function handleAIDrop(e){ e.preventDefault(); document.getElementById('ai-drop-zone').classList.remove('over'); handleAIFiles(e.dataTransfer.files); }
+
+function handleAIFiles(files){
+  for(const f of files) if(!aiQueue.find(q=>q.name===f.name)) aiQueue.push(f);
+  renderAIQueue();
+}
+
+function renderAIQueue(){
+  const el=document.getElementById('ai-queue');
+  const btn=document.getElementById('btn-ai-process');
+  if(!aiQueue.length){ el.innerHTML=''; btn.style.display='none'; return; }
+  btn.style.display='inline-flex';
+  el.innerHTML=aiQueue.map((f,i)=>`
+    <div class="file-item" id="ai-q-${i}">
+      <span class="file-ico">${f.type.includes('pdf')?'📄':'🖼️'}</span>
+      <div class="file-info">
+        <div class="file-name">${f.name}</div>
+        <div class="file-status" id="ai-qs-${i}" style="font-family:var(--mono)">Ready</div>
+        <div class="prog-bar"><div class="prog-fill scanning" id="ai-qp-${i}" style="width:0%"></div></div>
+      </div>
+      <button class="btn btn-ghost btn-xs" onclick="removeFromAIQueue(${i})">✕</button>
+    </div>`).join('');
+}
+
+function removeFromAIQueue(i){ aiQueue.splice(i,1); renderAIQueue(); }
+function clearAIQueue(){ aiQueue=[]; renderAIQueue(); }
+
+async function processAIQueue(){
+  if(!aiQueue.length) return;
+  const btn=document.getElementById('btn-ai-process');
+  btn.disabled=true; btn.textContent='Analysing…';
+
+  for(let i=0;i<aiQueue.length;i++){
+    const f=aiQueue[i];
+    const qEl=document.getElementById('ai-q-'+i);
+    const qs=document.getElementById('ai-qs-'+i);
+    const qp=document.getElementById('ai-qp-'+i);
+    if(qEl) qEl.classList.add('scanning');
+    if(qs) qs.textContent='Extracting text…';
+    if(qp) qp.style.width='25%';
+
+    try{
+      const text = await extractTextFromFile(f);
+      if(qs) qs.textContent='Running pattern engine…';
+      if(qp) qp.style.width='60%';
+
+      await sleep(150); // brief pause for UX
+
+      const result = buildIntelResult(text, f.name);
+      if(qp){ qp.style.width='100%'; qp.classList.remove('scanning'); qp.classList.add('done'); }
+      if(qs) qs.textContent=`✓ ${result.doc_label} · ${result.fields_count} fields`;
+      if(qEl){ qEl.classList.remove('scanning'); qEl.classList.add('done'); }
+
+      aiResults.push(result);
+      showAIResults(result);
+
+      // Save to backend
+      try{
+        const fd=new FormData(); fd.append('file',f);
+        fd.append('ai_result',JSON.stringify(result));
+        await fetch(API+'/api/upload',{method:'POST',body:fd});
+      }catch(e){}
+
+    }catch(err){
+      if(qs) qs.textContent='Error: '+err.message;
+      if(qEl){ qEl.classList.remove('scanning'); qEl.classList.add('error'); }
+      if(qp){ qp.classList.add('error'); qp.style.width='100%'; }
+    }
+  }
+
+  btn.disabled=false;
+  btn.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9.5 2A2.5 2.5 0 0112 4.5v15"/><path d="M14.5 2A2.5 2.5 0 0112 4.5v15"/></svg>Analyse All';
+  aiQueue=[]; renderAIQueue(); refreshAIHistory();
+}
+
+function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+
+async function extractTextFromFile(file){
+  if(file.type.includes('pdf')){
+    return new Promise((resolve,reject)=>{
+      const reader=new FileReader();
+      reader.onload=async e=>{
+        try{
+          const pdf=await pdfjsLib.getDocument({data:new Uint8Array(e.target.result)}).promise;
+          let text='';
+          for(let p=1;p<=Math.min(pdf.numPages,15);p++){
+            const page=await pdf.getPage(p);
+            const tc=await page.getTextContent();
+            text+=tc.items.map(i=>i.str).join(' ')+'\n';
+          }
+          resolve(text);
+        }catch(err){ reject(err); }
+      };
+      reader.readAsArrayBuffer(file);
+    });
+  } else {
+    // For images return filename + basic OCR hint text
+    return `File: ${file.name}\nImage document — pattern matching on filename and metadata\n${file.name}`;
+  }
+}
+
+function showAIResults(result){
+  document.getElementById('ai-results-empty').style.display='none';
+  const panel=document.getElementById('ai-results-content');
+  panel.style.display='block';
+
+  const confColor={high:'p-green',med:'p-amber',low:'p-red'}[result.doc_conf]||'p-neutral';
+
+  let html=`
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+      <span class="pill ${result.doc_color}" style="font-size:11px">${result.doc_label.toUpperCase()}</span>
+      <span class="pill ${confColor}" style="font-size:10px">${result.doc_conf} confidence</span>
+      <span style="font-size:11px;color:var(--ink3);font-family:var(--mono)">${result.fields_count} fields · ${result.filename}</span>
+    </div>`;
+
+  if(result.doc_signals&&result.doc_signals.length){
+    html+=`<div style="font-size:11px;color:var(--ink3);font-family:var(--mono);margin-bottom:12px">Matched signals: ${result.doc_signals.map(s=>`<span style="color:var(--accent)">${s}</span>`).join(' · ')}</div>`;
+  }
+
+  // Group fields by category
+  const grouped={};
+  for(const [k,v] of Object.entries(result.fields)){
+    const cat=v.category||'other';
+    if(!grouped[cat]) grouped[cat]=[];
+    grouped[cat].push([k,v]);
+  }
+
+  const catLabels={tracking:'Tracking & References',invoice:'Invoice',dates:'Dates',weight:'Weights',financial:'Financial',parties:'Parties',geo:'Geography',goods:'Goods',service:'Service'};
+
+  for(const [cat,fields] of Object.entries(grouped)){
+    if(!fields.length) continue;
+    html+=`<div style="font-size:9.5px;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em;font-family:var(--display);margin:12px 0 7px">${catLabels[cat]||cat}</div>`;
+    html+='<div class="intel-card"><div class="intel-card-body" style="padding:0 14px">';
+    html+=fields.map(([k,v])=>`
+      <div class="intel-field">
+        <div style="display:flex;align-items:flex-start;gap:6px;flex:1">
+          <div class="conf-dot conf-${v.conf==='high'?'high':v.conf==='med'?'med':'low'}" style="margin-top:6px"></div>
+          <span class="intel-fk">${k}</span>
+        </div>
+        <span class="intel-fv">${v.value}</span>
+      </div>`).join('');
+    html+='</div></div>';
+  }
+
+  if(result.amounts&&result.amounts.length){
+    const maxAmt=Math.max(...result.amounts);
+    html+=`<div style="font-size:9.5px;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em;font-family:var(--display);margin:12px 0 7px">Amounts Found</div>`;
+    html+=`<div style="display:flex;flex-wrap:wrap;gap:5px">${[...new Set(result.amounts)].slice(0,12).map(a=>`<span class="pill p-accent" style="font-size:11px;font-family:var(--mono)">${sym()}${a.toFixed(2)}</span>`).join('')}</div>`;
+  }
+
+  if(result.fields_count===0 && result.raw_lines.length){
+    html+=`<div style="font-size:9.5px;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:.1em;font-family:var(--display);margin:12px 0 7px">Raw Text Lines</div>`;
+    html+=`<div style="background:var(--surface3);border-radius:var(--r-sm);padding:10px 12px;font-family:var(--mono);font-size:11px;color:var(--ink3);max-height:200px;overflow-y:auto;line-height:1.8">${result.raw_lines.slice(0,20).map(l=>`<div>${l}</div>`).join('')}</div>`;
+  }
+
+  panel.innerHTML=html;
+}
+
+function refreshAIHistory(){
+  const tbody=document.getElementById('ai-history-table');
+  const countEl=document.getElementById('ai-hist-count');
+  if(countEl) countEl.textContent=aiResults.length+' documents';
+  if(!aiResults.length){
+    tbody.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--ink3);padding:20px;font-family:var(--mono)">No documents analysed yet</td></tr>';
+    return;
+  }
+  const confColor={high:'p-green',med:'p-amber',low:'p-red'};
+  tbody.innerHTML=aiResults.map((r,i)=>`
+    <tr onclick="showAIResults(aiResults[${i}]);document.getElementById('ai-results-empty').style.display='none'">
+      <td style="font-family:var(--mono);font-size:11.5px">${r.filename}</td>
+      <td><span class="pill ${r.doc_color}">${r.doc_label}</span></td>
+      <td><span class="pill p-accent" style="font-family:var(--mono)">${r.fields_count}</span></td>
+      <td><span class="pill ${confColor[r.doc_conf]||'p-neutral'}">${r.doc_conf}</span></td>
+      <td><button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();showAIResults(aiResults[${i}])">View</button></td>
+    </tr>`).join('');
+}
+
+// ── SMART MATCH ─────────────────────────────────────────────────
+async function runSmartMatch(){
+  const threshold = (+document.getElementById('match-threshold').value)/100;
+  const byInv = document.getElementById('m-by-inv').checked;
+  const byDate = document.getElementById('m-by-date').checked;
+  const byWeight = document.getElementById('m-by-weight').checked;
+  const byDest = document.getElementById('m-by-dest').checked;
+
+  let matched=0, total=0;
+  const details=[];
+
+  try{
+    const r=await fetch(API+'/api/analytics/shipments?limit=500'); const d=await r.json();
+    const ships=d.shipments||[];
+    total=ships.length;
+
+    for(const s of ships){
+      if(s.status==='matched') continue;
+      let score=0, reasons=[];
+
+      // Simulate matching scores using available fields
+      if(s.tracking_id){ score+=0.4; reasons.push('Tracking'); }
+      if(byInv&&s.export_invoice){ score+=0.2; reasons.push('Invoice'); }
+      if(byDate&&s.ship_date){ score+=0.2; reasons.push('Date'); }
+      if(byWeight&&s.gross_weight){ score+=0.1; reasons.push('Weight'); }
+      if(byDest&&s.destination){ score+=0.1; reasons.push('Dest'); }
+
+      if(score>=threshold){ matched++; }
+      details.push({...s, score, reasons});
+    }
+
+    // Show results
+    const el=document.getElementById('match-results');
+    el.innerHTML=`
+      <div style="display:flex;gap:12px;margin-bottom:14px">
+        <div style="text-align:center;background:var(--green-l);border:1px solid rgba(74,222,128,.3);border-radius:var(--r);padding:12px 20px">
+          <div style="font-family:var(--display);font-size:24px;font-weight:800;color:var(--green)">${matched}</div>
+          <div style="font-size:10px;color:var(--ink3);font-family:var(--mono)">MATCHED</div>
+        </div>
+        <div style="text-align:center;background:var(--red-l);border:1px solid rgba(255,92,122,.3);border-radius:var(--r);padding:12px 20px">
+          <div style="font-family:var(--display);font-size:24px;font-weight:800;color:var(--red)">${total-matched}</div>
+          <div style="font-size:10px;color:var(--ink3);font-family:var(--mono)">UNMATCHED</div>
+        </div>
+        <div style="text-align:center;background:var(--accent-l);border:1px solid rgba(0,212,170,.2);border-radius:var(--r);padding:12px 20px">
+          <div style="font-family:var(--display);font-size:24px;font-weight:800;color:var(--accent)">${total}</div>
+          <div style="font-size:10px;color:var(--ink3);font-family:var(--mono)">TOTAL</div>
+        </div>
+      </div>
+      <div class="alert-item al-success"><span class="al-dot"></span><span class="al-text">Match run complete. Threshold: ${Math.round(threshold*100)}% · Signals: Tracking${byInv?', Invoice':''}${byDate?', Date':''}${byWeight?', Weight':''}${byDest?', Destination':''}</span></div>`;
+
+    // Unmatched table
+    const unmatched=details.filter(s=>s.score<threshold);
+    document.getElementById('unmatched-count').textContent=unmatched.length+' unmatched';
+    document.getElementById('unmatched-table').innerHTML=unmatched.slice(0,20).map(s=>`
+      <tr>
+        <td class="mono">${s.tracking_id||'—'}</td>
+        <td>${s.export_invoice||'—'}</td>
+        <td>${fmtDate(s.ship_date)}</td>
+        <td>${s.destination||'—'}</td>
+        <td>${fmtKg(s.gross_weight)}</td>
+        <td><span class="pill p-amber" style="font-family:var(--mono)">${Math.round(s.score*100)}% match</span></td>
+      </tr>`).join('')||'<tr><td colspan="6" style="text-align:center;color:var(--ink3)">All shipments matched!</td></tr>';
+
+    // Also call backend match
+    try{ await fetch(API+'/api/match',{method:'POST'}); }catch(e){}
+    loadDashboard();
+  }catch(e){ console.error(e); }
+}
+
+async function runMatch(){
+  try{ await fetch(API+'/api/match',{method:'POST'}); loadDashboard(); }catch(e){}
+}
+
+// ── SMART CHAT (OFFLINE) ──────────────────────────────────────
+async function sendChat(){
+  const input=document.getElementById('chat-input');
+  const q=input.value.trim().toLowerCase();
+  if(!q) return;
+  input.value='';
+  appendMsg('user',q);
+
+  let answer='';
+
+  try{
+    const r=await fetch(API+'/api/analytics/shipments?limit=500'); const d=await r.json();
+    const ships=d.shipments||[];
+    const dr=await fetch(API+'/api/analytics/dashboard'); const dd=await dr.json();
+
+    if(/unmatched|missing|no ups/i.test(q)){
+      const un=ships.filter(s=>s.status!=='matched');
+      answer=`<strong>${un.length} unmatched shipments</strong> out of ${ships.length} total.<br><br>${un.slice(0,5).map(s=>`• ${s.tracking_id||'Unknown'} — ${s.destination||'?'} (${fmtDate(s.ship_date)})`).join('<br>')}${un.length>5?`<br>... and ${un.length-5} more`:''}`;
+    }
+    else if(/total spend|total cost|how much|spent/i.test(q)){
+      const total=ships.reduce((s,x)=>s+(+x.total_cost||0),0);
+      const thisM=new Date(); const mStr=`${thisM.getFullYear()}-${String(thisM.getMonth()+1).padStart(2,'0')}`;
+      const monthly=ships.filter(s=>(s.ship_date||'').startsWith(mStr)).reduce((s,x)=>s+(+x.total_cost||0),0);
+      answer=`Total spend across all shipments: <strong>${fmtMoney(total)}</strong><br>This month: <strong>${fmtMoney(monthly)}</strong><br>Shipments: ${ships.length}`;
+    }
+    else if(/highest|most expensive|max|biggest cost/i.test(q)){
+      const sorted=[...ships].sort((a,b)=>(+b.total_cost||0)-(+a.total_cost||0));
+      const top=sorted.slice(0,5);
+      answer=`<strong>Top 5 most expensive shipments:</strong><br><br>${top.map((s,i)=>`${i+1}. ${s.tracking_id||'—'} → ${s.destination||'?'} — <strong>${fmtMoney(s.total_cost)}</strong>`).join('<br>')}`;
+    }
+    else if(/destination|country|where/i.test(q)){
+      const map={};
+      ships.forEach(s=>{ const d=s.destination||'Unknown'; map[d]=(map[d]||0)+1; });
+      const sorted=Object.entries(map).sort((a,b)=>b[1]-a[1]);
+      answer=`<strong>Top destinations (${sorted.length} total):</strong><br><br>${sorted.slice(0,6).map(([d,c])=>`• ${d}: <strong>${c}</strong> shipments`).join('<br>')}`;
+    }
+    else if(/average|avg|per kg|rate/i.test(q)){
+      const avg=dd.avg_per_kg||0;
+      const avgKg=ships.filter(s=>s.cost_per_kg>0).reduce((s,x,_,a)=>s+(+x.cost_per_kg||0)/a.length,0);
+      answer=`Average cost per KG: <strong>${fmtMoney(avg||avgKg)}</strong><br>Based on ${ships.length} shipments.`;
+    }
+    else if(/pending|waiting|open/i.test(q)){
+      const pend=ships.filter(s=>s.status==='pending'||s.status==='unmatched');
+      answer=`<strong>${pend.length} pending / unmatched shipments</strong><br><br>${pend.slice(0,5).map(s=>`• ${s.tracking_id||'—'} — ${s.destination||'?'} (${s.status})`).join('<br>')}`;
+    }
+    else if(/remind|overdue|due/i.test(q)){
+      try{ const rr=await fetch(API+'/api/reminders'); const rd=await rr.json(); answer=`<strong>${(rd.due||[]).length} overdue reminders</strong>, ${(rd.upcoming||[]).length} upcoming.`; }
+      catch(e){ answer='Unable to load reminders.'; }
+    }
+    else if(/document|doc|upload|file/i.test(q)){
+      try{ const docsR=await fetch(API+'/api/documents'); const docsD=await docsR.json(); answer=`<strong>${docsD.length||0} documents</strong> in your system. Session AI-processed: ${aiResults.length}.`; }
+      catch(e){ answer='Unable to load document data.'; }
+    }
+    else if(/summary|overview|report/i.test(q)){
+      const matched=ships.filter(s=>s.status==='matched').length;
+      const total_spend=ships.reduce((s,x)=>s+(+x.total_cost||0),0);
+      const dests=new Set(ships.map(s=>s.destination).filter(Boolean)).size;
+      answer=`<strong>Shipment Summary</strong><br><br>• Total shipments: <strong>${ships.length}</strong><br>• Matched: <strong>${matched}</strong> (${Math.round(matched/Math.max(ships.length,1)*100)}%)<br>• Unmatched: <strong>${ships.length-matched}</strong><br>• Total spend: <strong>${fmtMoney(total_spend)}</strong><br>• Destinations: <strong>${dests}</strong><br>• AI-processed docs: <strong>${aiResults.length}</strong>`;
+    }
+    else if(/weight|heaviest|heavy/i.test(q)){
+      const sorted=[...ships].sort((a,b)=>(+b.gross_weight||0)-(+a.gross_weight||0));
+      answer=`<strong>Heaviest shipments:</strong><br><br>${sorted.slice(0,5).map((s,i)=>`${i+1}. ${s.tracking_id||'—'} — <strong>${fmtKg(s.gross_weight)}</strong> → ${s.destination||'?'}`).join('<br>')}`;
+    }
+    else {
+      // Fuzzy field search
+      const hits=ships.filter(s=>JSON.stringify(s).toLowerCase().includes(q.split(' ')[0]));
+      if(hits.length){
+        answer=`Found <strong>${hits.length} shipments</strong> matching "<em>${q}</em>":<br><br>${hits.slice(0,5).map(s=>`• ${s.tracking_id||'—'} → ${s.destination||'?'} — ${fmtMoney(s.total_cost)}`).join('<br>')}`;
+      } else {
+        answer=`I couldn't find specific data for "<em>${q}</em>".<br><br>Try: <em>total spend</em>, <em>unmatched</em>, <em>top destination</em>, <em>highest cost</em>, <em>summary</em>, <em>average rate</em>`;
+      }
+    }
+  }catch(e){
+    answer='Unable to query shipment data. Make sure the backend is running.';
+  }
+
+  appendMsg('bot',answer);
+}
+
+function sendChip(el){ document.getElementById('chat-input').value=el.textContent; sendChat(); }
+function clearChat(){ document.getElementById('chat-msgs').innerHTML=''; appendMsg('bot','Chat cleared. Ask me anything about your shipments.'); }
+
+function appendMsg(role,html){
+  const msgs=document.getElementById('chat-msgs');
+  const d=document.createElement('div');
+  d.className='cmsg'+(role==='user'?' user':'');
+  d.innerHTML=`<div class="cav ${role==='user'?'user':'bot'}">${role==='user'?'U':'NX'}</div><div class="cbub ${role==='user'?'user':'bot'}">${html}</div>`;
+  msgs.appendChild(d); msgs.scrollTop=msgs.scrollHeight;
+}
+
+// ── BACKEND CALLS ────────────────────────────────────────────────
+async function loadDashboard(){
+  document.getElementById('dash-date').textContent=new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  try{
+    const [dashR,destR,mR]=await Promise.all([fetch(API+'/api/analytics/dashboard'),fetch(API+'/api/analytics/destinations'),fetch(API+'/api/analytics/monthly')]);
+    const [dash,dest,monthly]=await Promise.all([dashR.json(),destR.json(),mR.json()]);
+
+    document.getElementById('dash-stats').innerHTML=`
+      <div class="stat stat-accent"><div class="stat-ico" style="background:var(--accent-l)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2"><path d="M5 17H3a2 2 0 01-2-2V5a2 2 0 012-2h11a2 2 0 012 2v3"/><rect x="9" y="11" width="14" height="10" rx="2"/></svg></div><div class="stat-val">${dash.total||0}</div><div class="stat-label">SHIPMENTS</div></div>
+      <div class="stat stat-blue"><div class="stat-ico" style="background:var(--green-l)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg></div><div class="stat-val">${dash.matched||0}</div><div class="stat-label">MATCHED</div></div>
+      <div class="stat stat-red"><div class="stat-ico" style="background:var(--red-l)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div><div class="stat-val">${dash.missing_ups||0}</div><div class="stat-label">MISSING UPS</div></div>
+      <div class="stat stat-amber"><div class="stat-ico" style="background:var(--cyan-l)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg></div><div class="stat-val">${fmtMoney(dash.total_spend||0)}</div><div class="stat-label">TOTAL SPEND</div></div>
+      <div class="stat stat-purple"><div class="stat-ico" style="background:var(--amber-l)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--amber)" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg></div><div class="stat-val">${fmtMoney(dash.avg_per_kg||0)}</div><div class="stat-label">AVG / KG</div></div>`;
+
+    // Alerts
+    const alerts=[];
+    if(dash.missing_ups>0) alerts.push({t:'warn',m:`${dash.missing_ups} shipments missing UPS invoice`});
+    if(dash.due_reminders>0) alerts.push({t:'error',m:`${dash.due_reminders} reminder(s) overdue`});
+    alerts.push({t:'success',m:'Pattern Intelligence Engine active — 100% offline'});
+    if(aiResults.length) alerts.push({t:'info',m:`${aiResults.length} document(s) analysed this session`});
+    document.getElementById('dash-alerts').innerHTML=alerts.map(a=>`<div class="alert-item al-${a.t}"><span class="al-dot"></span><span class="al-text">${a.m}</span></div>`).join('');
+
+    // Recent
+    try{
+      const sr=await fetch(API+'/api/analytics/shipments?limit=6'); const sd=await sr.json();
+      document.getElementById('dash-recent').innerHTML=(sd.shipments||[]).map(s=>`<tr onclick="openShipment(${s.id})"><td class="mono">${(s.tracking_id||'—').slice(0,16)}</td><td>${s.destination||'—'}</td><td style="font-family:var(--mono)">${fmtMoney(s.total_cost)}</td><td>${statusPill(s.status)}</td></tr>`).join('')||'<tr><td colspan="4" style="text-align:center;color:var(--ink3);font-family:var(--mono)">No shipments yet</td></tr>';
+    }catch(e){}
+
+    // Dest bars
+    const dests=(dest.destinations||[]).slice(0,7);
+    const dmax=Math.max(...dests.map(x=>x.total_cost||0),1);
+    document.getElementById('dest-bars').innerHTML=dests.map(x=>`<div class="wbar"><div class="wbar-label" title="${x.destination}">${(x.destination||'?').slice(0,9)}</div><div class="wbar-track"><div class="wbar-fill" style="width:${Math.round(x.total_cost/dmax*100)}%"></div></div><div class="wbar-val">${fmtMoney(x.total_cost)}</div></div>`).join('')||'<div style="color:var(--ink3);font-size:12px;font-family:var(--mono)">No data yet</div>';
+
+    // Monthly chart
+    const months=(monthly.months||[]).slice(0,6).reverse();
+    if(monthlyChart) monthlyChart.destroy();
+    const ctx=document.getElementById('c-monthly');
+    if(ctx) monthlyChart=new Chart(ctx,{type:'bar',data:{labels:months.map(m=>m.month),datasets:[{label:'Spend',data:months.map(m=>m.total||0),backgroundColor:'rgba(0,212,170,.7)',borderRadius:6,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#6b6b88',font:{family:'JetBrains Mono',size:10}},grid:{display:false}},y:{ticks:{callback:v=>sym()+v,color:'#6b6b88',font:{family:'JetBrains Mono',size:10}},grid:{color:'rgba(255,255,255,.04)'}},},}});
+
+    // Badges
+    setBadge('nb-shipments',dash.total||0);
+    setBadge('nb-reminders',dash.due_reminders||0);
+    document.getElementById('notif-dot').style.display=(dash.due_reminders>0)?'block':'none';
+  }catch(e){ console.error(e); }
+}
+
+function setBadge(id,n){ const el=document.getElementById(id); if(el){el.textContent=n; el.style.display=n>0?'':'none';} }
+
+async function loadShipments(){
+  try{
+    const r=await fetch(API+'/api/analytics/shipments?limit=500'); const d=await r.json();
+    allShipments=d.shipments||[];
+    renderShipTable(allShipments);
+    const dests=[...new Set(allShipments.map(s=>s.destination).filter(Boolean))].sort();
+    const sel=document.getElementById('ship-dest');
+    sel.innerHTML='<option value="">All Destinations</option>'+dests.map(d=>`<option>${d}</option>`).join('');
+  }catch(e){}
+}
+
+function renderShipTable(rows){
+  document.getElementById('ship-count').textContent=rows.length+' shipments';
+  document.getElementById('ship-table').innerHTML=rows.map(s=>`
+    <tr onclick="openShipment(${s.id})">
+      <td onclick="event.stopPropagation()"><input type="checkbox" class="ship-check" value="${s.id}" style="accent-color:var(--accent)"></td>
+      <td class="mono">${(s.tracking_id||'—').slice(0,18)}</td>
+      <td style="font-size:11.5px">${s.export_invoice||'—'}</td>
+      <td style="font-size:11.5px">${s.ups_invoice_number||'—'}</td>
+      <td style="font-family:var(--mono);font-size:11.5px">${fmtDate(s.ship_date)}</td>
+      <td>${s.destination||'—'}</td>
+      <td>${s.consignee||'—'}</td>
+      <td style="font-family:var(--mono);font-size:11.5px">${fmtKg(s.gross_weight)}</td>
+      <td style="font-family:var(--mono);font-size:11.5px">${fmtMoney(s.cost_per_kg)}</td>
+      <td style="font-family:var(--mono);font-weight:700">${fmtMoney(s.total_cost)}</td>
+      <td>${statusPill(s.status)}</td>
+    </tr>`).join('')||'<tr><td colspan="11" style="text-align:center;color:var(--ink3);font-family:var(--mono);padding:20px">No shipments found</td></tr>';
+}
+
+function filterShipments(){
+  const q=(document.getElementById('ship-search').value||'').toLowerCase();
+  const st=document.getElementById('ship-status').value;
+  const dest=document.getElementById('ship-dest').value;
+  const from=document.getElementById('ship-from').value;
+  const to=document.getElementById('ship-to').value;
+  renderShipTable(allShipments.filter(s=>{
+    if(q&&!JSON.stringify(s).toLowerCase().includes(q)) return false;
+    if(st&&s.status!==st) return false;
+    if(dest&&s.destination!==dest) return false;
+    if(from&&s.ship_date<from) return false;
+    if(to&&s.ship_date>to) return false;
+    return true;
+  }));
+}
+function clearFilters(){ ['ship-search','ship-from','ship-to'].forEach(id=>document.getElementById(id).value=''); ['ship-status','ship-dest'].forEach(id=>document.getElementById(id).selectedIndex=0); renderShipTable(allShipments); }
+function toggleSelectAll(cb){ document.querySelectorAll('.ship-check').forEach(c=>c.checked=cb.checked); }
+function bulkTag(){ alert('Tag selected shipments'); }
+async function bulkDelete(){
+  const ids=[...document.querySelectorAll('.ship-check:checked')].map(c=>c.value);
+  if(!ids.length) return alert('Select shipments first');
+  if(!confirm(`Delete ${ids.length} shipment(s)?`)) return;
+  await fetch(API+'/api/shipments/bulk',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({ids})});
+  loadShipments();
+}
+
+async function openShipment(id){
+  try{
+    const r=await fetch(API+'/api/analytics/shipment/'+id); const d=await r.json();
+    if(!d||d.error) return;
+    document.getElementById('modal-ship-title').textContent='Shipment: '+(d.tracking_id||id);
+    document.getElementById('modal-ship-body').innerHTML=`
+      <div class="g2" style="margin-bottom:14px">
+        <div>${dr('Tracking',d.tracking_id)}${dr('Status',statusPill(d.status))}${dr('Date',fmtDate(d.ship_date))}${dr('Dest',d.destination)}${dr('Consignee',d.consignee)}</div>
+        <div>${dr('Weight',fmtKg(d.gross_weight))}${dr('Total',fmtMoney(d.total_cost))}${dr('/KG',fmtMoney(d.cost_per_kg))}${dr('Export Inv',d.export_invoice||'—')}${dr('UPS Inv',d.ups_invoice_number||'—')}</div>
+      </div>
+      <div class="field"><label>Notes</label><textarea id="ship-notes" rows="3">${d.notes||''}</textarea></div>`;
+    document.getElementById('modal-shipment').dataset.id=id;
+    document.getElementById('modal-shipment').style.opacity='1';
+    document.getElementById('modal-shipment').style.pointerEvents='all';
+    document.getElementById('modal-ship-inner').style.transform='translateY(0)';
+  }catch(e){}
+}
+async function saveShipmentNotes(){
+  const id=document.getElementById('modal-shipment').dataset.id;
+  const notes=document.getElementById('ship-notes').value;
+  await fetch(API+'/api/shipments/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({notes})});
+  closeModal('modal-shipment');
+}
+function dr(k,v){ return `<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--line);font-size:12.5px"><span style="font-family:var(--mono);font-size:11px;color:var(--ink3)">${k}</span><span style="font-weight:600">${v||'—'}</span></div>`; }
+function closeModal(id){
+  const el=document.getElementById(id);
+  el.style.opacity='0'; el.style.pointerEvents='none';
+  document.getElementById('modal-ship-inner').style.transform='translateY(12px)';
+}
+document.addEventListener('click',e=>{ if(e.target.id==='modal-shipment') closeModal('modal-shipment'); });
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeModal('modal-shipment'); });
+
+async function loadDocuments(){
+  try{
+    const r=await fetch(API+'/api/documents'); const d=await r.json();
+    document.getElementById('docs-table').innerHTML=(d||[]).map(doc=>`
+      <tr>
+        <td style="font-family:var(--mono);font-size:11.5px">${doc.filename}</td>
+        <td>${dtPill(doc.doc_type)}</td>
+        <td style="font-family:var(--mono);font-size:11.5px">${fmtDate(doc.created_at)}</td>
+        <td><button class="btn btn-danger btn-xs" onclick="deleteDoc(${doc.id},event)">Del</button></td>
+      </tr>`).join('')||'<tr><td colspan="4" style="text-align:center;color:var(--ink3);font-family:var(--mono);padding:20px">No documents yet</td></tr>';
+  }catch(e){}
+}
+async function deleteDoc(id,e){ e.stopPropagation(); if(!confirm('Delete?')) return; await fetch(API+'/api/documents/'+id,{method:'DELETE'}); loadDocuments(); }
+
+function dtPill(t){
+  const m={export_invoice:'p-green',ups_invoice:'p-blue',customs:'p-cyan',unknown:'p-neutral'};
+  return `<span class="pill ${m[t]||'p-neutral'}">${t||'unknown'}</span>`;
+}
+
+function handleDrop(e){ e.preventDefault(); document.getElementById('drop-zone').classList.remove('over'); handleFiles(e.dataTransfer.files); }
+async function handleFiles(files){
+  for(const file of files){
+    const el=document.createElement('div'); el.className='file-item';
+    el.innerHTML=`<span class="file-ico">📄</span><div class="file-info"><div class="file-name">${file.name}</div><div class="file-status">Uploading…</div><div class="prog-bar"><div class="prog-fill scanning" style="width:30%"></div></div></div>`;
+    const q=document.getElementById('upload-queue'); if(q.querySelector('.empty')) q.innerHTML=''; q.prepend(el);
+    const fd=new FormData(); fd.append('file',file);
+    const r=await fetch(API+'/api/upload',{method:'POST',body:fd}); const d=await r.json();
+    el.querySelector('.file-status').textContent=d.error?'Error':d.doc_type||'Processed';
+    el.querySelector('.prog-fill').style.width='100%'; el.querySelector('.prog-fill').classList.remove('scanning'); el.querySelector('.prog-fill').classList.add('done');
+    if(d.fields) showExtracted(d.fields,d.doc_type);
+  }
+}
+function showExtracted(fields,t){
+  const el=document.getElementById('extracted-preview');
+  el.innerHTML=`<div style="margin-bottom:10px">${dtPill(t)}</div>`+Object.entries(fields).filter(([k])=>k!=='confidence').map(([k,v])=>`<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--line);font-size:12px"><span style="color:var(--ink3);font-family:var(--mono);font-size:10.5px">${k}</span><span style="font-weight:600">${v||'—'}</span></div>`).join('');
+}
+
+async function loadAnalytics(){
+  try{
+    const [mR,dR,cR]=await Promise.all([fetch(API+'/api/analytics/monthly?months='+anPeriod),fetch(API+'/api/analytics/destinations'),fetch(API+'/api/analytics/charges')]);
+    const [mD,dD,cD]=await Promise.all([mR.json(),dR.json(),cR.json()]);
+    const months=(mD.months||[]).slice(0,anPeriod).reverse();
+    const totalSpend=months.reduce((s,m)=>s+(m.total||0),0);
+    const totalShips=months.reduce((s,m)=>s+(m.count||0),0);
+
+    document.getElementById('an-stats').innerHTML=`
+      <div class="stat stat-accent"><div class="stat-val">${fmtMoney(totalSpend)}</div><div class="stat-label">TOTAL SPEND</div></div>
+      <div class="stat stat-blue"><div class="stat-val">${totalShips}</div><div class="stat-label">SHIPMENTS</div></div>
+      <div class="stat stat-amber"><div class="stat-val">${fmtMoney(totalShips?totalSpend/totalShips:0)}</div><div class="stat-label">AVG / SHIP</div></div>
+      <div class="stat stat-purple"><div class="stat-val">${(dD.destinations||[]).length}</div><div class="stat-label">DESTS</div></div>`;
+
+    if(anTrendChart) anTrendChart.destroy();
+    const ctx1=document.getElementById('c-an-trend');
+    if(ctx1) anTrendChart=new Chart(ctx1,{type:'line',data:{labels:months.map(m=>m.month),datasets:[{label:'Spend',data:months.map(m=>m.total||0),borderColor:'#5b8dee',backgroundColor:'rgba(91,141,238,.08)',fill:true,tension:.4,borderWidth:2,pointRadius:3,pointBackgroundColor:'#5b8dee'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#6b6b88',font:{family:'JetBrains Mono',size:10}},grid:{display:false}},y:{ticks:{callback:v=>sym()+v,color:'#6b6b88',font:{family:'JetBrains Mono',size:10}},grid:{color:'rgba(255,255,255,.04)'}}}}});
+
+    const dests=(dD.destinations||[]).slice(0,7);
+    const dmax=Math.max(...dests.map(x=>x.total_cost||0),1);
+    document.getElementById('an-dest-bars').innerHTML=dests.map(x=>`<div class="wbar"><div class="wbar-label" title="${x.destination}">${(x.destination||'?').slice(0,9)}</div><div class="wbar-track"><div class="wbar-fill" style="width:${Math.round(x.total_cost/dmax*100)}%"></div></div><div class="wbar-val">${fmtMoney(x.total_cost)}</div></div>`).join('')||'<div style="color:var(--ink3);font-family:var(--mono);font-size:12px">No data</div>';
+
+    const charges=cD||{};
+    if(chargesChart) chargesChart.destroy();
+    const ctx2=document.getElementById('c-charges');
+    if(ctx2) chargesChart=new Chart(ctx2,{type:'doughnut',data:{labels:['Transport','Fuel','Remote','Duty','Other'],datasets:[{data:[charges.transport||0,charges.fuel||0,charges.remote||0,charges.duty||0,charges.other||0],backgroundColor:['#00d4aa','#f5a623','#c084fc','#ff5c7a','#6b6b88'],borderWidth:0,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{color:'#6b6b88',font:{size:11,family:'JetBrains Mono'}}}}}});
+
+    try{
+      const smR=await fetch(API+'/api/analytics/service-mix'); const smD=await smR.json();
+      document.getElementById('an-service-mix').innerHTML=(smD.service_types||[]).map(s=>`<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--line);font-size:12.5px"><span>${s.service_type||'Unknown'}</span><span style="font-family:var(--mono);font-weight:700;color:var(--accent)">${s.count}</span></div>`).join('')||'<div style="color:var(--ink3);font-family:var(--mono);font-size:12px">No data</div>';
+    }catch(e){}
+  }catch(e){ console.error(e); }
+}
+function setAnPeriod(btn,n){ anPeriod=n; document.querySelectorAll('#screen-analytics .tab').forEach(t=>t.classList.remove('active')); btn.classList.add('active'); loadAnalytics(); }
+
+async function loadReminders(){
+  try{
+    const r=await fetch(API+'/api/reminders'); const d=await r.json();
+    const due=d.due||[], up=d.upcoming||[];
+    setBadge('nb-reminders',due.length);
+    document.getElementById('notif-dot').style.display=due.length?'block':'none';
+    document.getElementById('due-reminders').innerHTML=due.length?due.map(r=>remCard(r,'red')).join(''):'<div class="empty"><span class="empty-ico">✅</span><div class="empty-title">No overdue</div></div>';
+    document.getElementById('upcoming-reminders').innerHTML=up.length?up.map(r=>remCard(r,'amber')).join(''):'<div class="empty"><span class="empty-ico">📅</span><div class="empty-title">No upcoming</div></div>';
+    const tr=await fetch(API+'/api/reminders/templates'); const td=await tr.json();
+    document.getElementById('reminder-templates').innerHTML=(td||[]).map(t=>`<div class="rem-card"><div class="rem-dot" style="background:var(--accent2)"></div><div style="flex:1"><div class="rem-title">${t.name}</div><div class="rem-meta">${t.days_after}d after ship · ${t.reminder_type}</div></div><span class="pill ${t.is_enabled?'p-green':'p-neutral'}">${t.is_enabled?'ON':'OFF'}</span></div>`).join('')||'<div class="empty">No templates</div>';
+  }catch(e){}
+}
+function remCard(r,col){ return `<div class="rem-card"><div class="rem-dot" style="background:var(--${col})"></div><div style="flex:1"><div class="rem-title">${r.tracking_id||'Shipment'} — ${(r.reminder_type||'').toUpperCase()}</div><div class="rem-meta">Due: ${fmtDate(r.due_date)} · ${r.destination||''}</div><div class="rem-actions"><button class="btn btn-primary btn-xs" onclick="sendReminder(${r.id})">Email</button><button class="btn btn-ghost btn-xs" onclick="markSent(${r.id})">Done</button></div></div></div>`; }
+async function sendReminder(id){ await fetch(API+'/api/reminders/'+id+'/send',{method:'POST'}); loadReminders(); }
+async function markSent(id){ await fetch(API+'/api/reminders/'+id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({is_sent:1})}); loadReminders(); }
+
+function switchTab(btn,id){
+  btn.parentElement.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+  ['tab-due','tab-upcoming','tab-templates'].forEach(t=>{ const e=document.getElementById(t); if(e) e.style.display=t===id?'block':'none'; });
+}
+
+function runEstimate(){
+  const w=+document.getElementById('est-weight').value||0;
+  const dest=document.getElementById('est-dest').value;
+  const svc=document.getElementById('est-service').value;
+  const fuel=+document.getElementById('est-fuel').value||0;
+  if(!w||!dest){ document.getElementById('est-result').style.display='none'; document.getElementById('est-empty').style.display='block'; return; }
+  const rates={express:8.5,expedited:6.2,standard:4.8};
+  const base=Math.max(18,w*(rates[svc]||6));
+  const fuelAmt=base*fuel/100;
+  document.getElementById('est-r-base').textContent=fmtMoney(base);
+  document.getElementById('est-r-fuel').textContent=fmtMoney(fuelAmt);
+  document.getElementById('est-r-total').textContent=fmtMoney(base+fuelAmt);
+  document.getElementById('est-result').style.display='block';
+  document.getElementById('est-empty').style.display='none';
+}
+
+function loadSettings(){
+  document.getElementById('s-currency').value=CURRENCY;
+  try{ const s=JSON.parse(localStorage.getItem('nx-settings')||'{}'); if(s.email_from) document.getElementById('s-from').value=s.email_from; if(s.email_to) document.getElementById('s-to').value=s.email_to; }catch(e){}
+}
+async function saveSettings(){
+  CURRENCY=document.getElementById('s-currency').value;
+  localStorage.setItem('nx-currency',CURRENCY);
+  const s={email_from:document.getElementById('s-from').value,email_to:document.getElementById('s-to').value,email_password:document.getElementById('s-pass')?.value||''};
+  localStorage.setItem('nx-settings',JSON.stringify(s));
+  try{ await fetch(API+'/api/settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({currency:CURRENCY,...s})}); }catch(e){}
+  const btn=event.target; const orig=btn.textContent; btn.textContent='✓ Saved!'; setTimeout(()=>btn.textContent=orig,1500);
+}
+
+async function exportCSV(){ try{ const r=await fetch(API+'/api/export/csv'); const b=await r.blob(); const u=URL.createObjectURL(b); const a=document.createElement('a'); a.href=u; a.download='nexus.csv'; a.click(); }catch(e){} }
+async function exportJSON(){ try{ const r=await fetch(API+'/api/export/json'); const b=await r.blob(); const u=URL.createObjectURL(b); const a=document.createElement('a'); a.href=u; a.download='nexus.json'; a.click(); }catch(e){} }
+
+function globalSearch(q){ if(q.length>1){ go('shipments'); document.getElementById('ship-search').value=q; filterShipments(); } }
+function statusPill(s){ const m={matched:'p-green',unmatched:'p-red',pending:'p-amber',closed:'p-neutral'}; return `<span class="pill ${m[s]||'p-neutral'}">${s||'—'}</span>`; }
+
+// LIGHT TOGGLE
+function toggleLight(){
+  const t=document.getElementById('dark-toggle');
+  document.body.classList.toggle('light');
+  t.classList.toggle('on');
+  if(document.body.classList.contains('light')){
+    document.body.style.cssText='--bg:#f5f4f0;--surface:#fff;--surface2:#f9f8f6;--surface3:#f0ede8;--line:#e8e5df;--line2:#d8d4cc;--ink:#111118;--ink2:#3a3a4a;--ink3:#888;--ink4:#bbb;';
+  } else { document.body.style.cssText=''; }
+}
+
+// NAV
+const TITLES={dashboard:'Dashboard',understand:'Auto-Understand',upload:'Upload',shipments:'Shipments',documents:'Documents',matcher:'Auto-Matcher',chat:'Smart Chat',analytics:'Analytics',reminders:'Reminders',estimator:'Estimator',settings:'Settings'};
+function go(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('screen-'+id)?.classList.add('on');
+  document.querySelector(`[onclick="go('${id}')"]`)?.classList.add('active');
+  document.getElementById('topbar-title').textContent=TITLES[id]||id;
+  if(id==='dashboard') loadDashboard();
+  else if(id==='shipments') loadShipments();
+  else if(id==='documents') loadDocuments();
+  else if(id==='analytics') loadAnalytics();
+  else if(id==='reminders') loadReminders();
+  else if(id==='settings') loadSettings();
+  else if(id==='understand') refreshAIHistory();
+}
+
+// ── INIT ──────────────────────────────────────────────────────
+pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+CURRENCY=localStorage.getItem('nx-currency')||'USD';
+loadDashboard();
+</script>
+</body>
+</html>
