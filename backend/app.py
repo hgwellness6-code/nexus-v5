@@ -65,6 +65,7 @@ FRONTEND_DIR = os.path.join(os.path.dirname(__file__), '..', 'frontend')
 app = Flask(__name__, static_folder=FRONTEND_DIR, static_url_path='')
 CORS(app)
 os.makedirs(UPLOAD_DIR, exist_ok=True)
+init_db()
 
 
 # ── SERVE FRONTEND ────────────────────────────────────────────────────────────
